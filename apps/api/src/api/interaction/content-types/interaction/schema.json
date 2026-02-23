@@ -1,0 +1,33 @@
+{
+  "kind": "collectionType",
+  "collectionName": "interactions",
+  "info": {
+    "singularName": "interaction",
+    "pluralName": "interactions",
+    "displayName": "Interaction"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "actionType": {
+      "type": "enumeration",
+      "enum": ["like", "follow", "share"],
+      "required": true
+    },
+    "targetType": {
+      "type": "enumeration",
+      "enum": ["post", "comment", "user", "hotel", "tour", "other"],
+      "required": true
+    },
+    "targetDocumentId": {
+      "type": "string",
+      "required": true
+    },
+    "user": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    }
+  }
+}

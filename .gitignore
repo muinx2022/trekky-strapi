@@ -1,0 +1,12 @@
+node_modules
+.pnpm-store
+.turbo
+**/.next
+**/dist
+apps/api/.cache
+apps/api/build
+.env
+.env.local
+apps/**/.env
+apps/**/.env.local
+.DS_Store

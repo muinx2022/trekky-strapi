@@ -1,0 +1,47 @@
+﻿{
+  "kind": "collectionType",
+  "collectionName": "comments",
+  "info": {
+    "singularName": "comment",
+    "pluralName": "comments",
+    "displayName": "Comment"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "authorName": {
+      "type": "string",
+      "required": true
+    },
+    "authorEmail": {
+      "type": "email"
+    },
+    "content": {
+      "type": "text",
+      "required": true
+    },
+    "targetType": {
+      "type": "enumeration",
+      "enum": ["post", "page", "product", "hotel", "tour", "other"],
+      "default": "post",
+      "required": true
+    },
+    "targetDocumentId": {
+      "type": "string",
+      "required": true
+    },
+    "parent": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::comment.comment",
+      "inversedBy": "children"
+    },
+    "children": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::comment.comment",
+      "mappedBy": "parent"
+    }
+  }
+}
