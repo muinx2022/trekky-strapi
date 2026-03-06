@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { nameAvatarFile } from "@/lib/media-naming";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:1337";
 
@@ -70,7 +71,8 @@ export async function PUT(request: Request) {
 
     if (avatarFile instanceof File && avatarFile.size > 0) {
       const uploadFormData = new FormData();
-      uploadFormData.append("files", avatarFile, avatarFile.name);
+      const renamedAvatar = nameAvatarFile(avatarFile);
+      uploadFormData.append("files", renamedAvatar, renamedAvatar.name);
 
       const uploadRes = await fetch(`${API_URL}/api/upload`, {
         method: "POST",

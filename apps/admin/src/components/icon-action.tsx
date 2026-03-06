@@ -36,7 +36,9 @@ export function IconAction({
     <div className="inline-flex">
       {href ? (
         <Link href={href} aria-label={label} title={label} className={baseClassName}>
-          {icon}
+          <span className="inline-flex items-center justify-center [&_svg]:h-3.5 [&_svg]:w-3.5">
+            {icon}
+          </span>
         </Link>
       ) : (
         <button
@@ -47,7 +49,9 @@ export function IconAction({
           title={label}
           className={baseClassName}
         >
-          {icon}
+          <span className="inline-flex items-center justify-center [&_svg]:h-3.5 [&_svg]:w-3.5">
+            {icon}
+          </span>
         </button>
       )}
     </div>

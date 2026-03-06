@@ -1,6 +1,10 @@
+import type { Metadata } from "next";
 import { PostForm } from "@/components/post-form";
 
 export const dynamic = "force-dynamic";
+export const metadata: Metadata = {
+  title: "Edit Post",
+};
 
 type EditPostPageProps = {
   params: Promise<{ documentId: string }>;

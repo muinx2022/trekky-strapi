@@ -1,0 +1,99 @@
+services:
+  # Cloudflare Tunnel (nếu dùng tunnel riêng cho trekky)
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: trekky-cloudflared
+    restart: always
+    environment:
+      - TUNNEL_TOKEN=${TUNNEL_TOKEN}
+    command: tunnel --no-autoupdate run
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - trekky-network
+
+  # Strapi API
+  api:
+    image: muinx/trekky-api:latest
+    container_name: trekky-api
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      - DATABASE_CLIENT=postgres
+      - DATABASE_HOST=db
+      - DATABASE_PORT=5432
+      - DATABASE_NAME=${POSTGRES_DB:-trekky}
+      - DATABASE_USERNAME=${POSTGRES_USER}
+      - DATABASE_PASSWORD=${POSTGRES_PASSWORD}
+      - PUBLIC_URL=https://api.trekky.net
+      - MEILISEARCH_HOST=http://trekky-meilisearch:7700
+    ports:
+      - "1338:1337"
+    volumes:
+      - ./uploads:/app/apps/api/public/uploads
+    networks:
+      - trekky-network
+      - dev-network
+      - gikky-network
+
+  # Next.js web frontend
+  web:
+    image: muinx/trekky-web:latest
+    container_name: trekky-web
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      - HOSTNAME=0.0.0.0
+      - PORT=3000
+      - STRAPI_INTERNAL_URL=http://trekky-api:1337
+    ports:
+      - "3002:3000"
+    depends_on:
+      - api
+    networks:
+      - trekky-network
+      - gikky-network
+
+  # Next.js admin dashboard
+  admin:
+    image: muinx/trekky-admin:latest
+    container_name: trekky-admin
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      - HOSTNAME=0.0.0.0
+      - PORT=3001
+      - STRAPI_INTERNAL_URL=http://trekky-api:1337
+    ports:
+      - "3003:3001"
+    depends_on:
+      - api
+    networks:
+      - trekky-network
+      - gikky-network
+
+  # MeiliSearch
+  meilisearch:
+    image: getmeili/meilisearch:v1.13
+    container_name: trekky-meilisearch
+    restart: unless-stopped
+    environment:
+      - MEILI_MASTER_KEY=${MEILI_MASTER_KEY}
+      - MEILI_ENV=production
+    volumes:
+      - meili_data:/meili_data
+    networks:
+      - trekky-network
+
+networks:
+  trekky-network:
+    driver: bridge
+  dev-network:
+    external: true
+  gikky-network:
+    external: true
+    name: gikky-net_gikky-network
+
+volumes:
+  uploads:
+  meili_data:

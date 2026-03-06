@@ -15,6 +15,12 @@ export default {
     { method: 'POST', path: '/management/posts/:documentId/publish', handler: 'management.publishPost', config: adminOnly },
     { method: 'POST', path: '/management/posts/:documentId/unpublish', handler: 'management.unpublishPost', config: adminOnly },
 
+    { method: 'GET', path: '/management/pages', handler: 'management.listPages', config: adminOnly },
+    { method: 'GET', path: '/management/pages/:documentId', handler: 'management.findPage', config: adminOnly },
+    { method: 'POST', path: '/management/pages', handler: 'management.createPage', config: adminOnly },
+    { method: 'PUT', path: '/management/pages/:documentId', handler: 'management.updatePage', config: adminOnly },
+    { method: 'DELETE', path: '/management/pages/:documentId', handler: 'management.deletePage', config: adminOnly },
+
     { method: 'GET', path: '/management/categories', handler: 'management.listCategories', config: adminOnly },
     { method: 'GET', path: '/management/categories/:documentId', handler: 'management.findCategory', config: adminOnly },
     { method: 'POST', path: '/management/categories', handler: 'management.createCategory', config: adminOnly },
@@ -23,6 +29,15 @@ export default {
     { method: 'POST', path: '/management/categories/:documentId/publish', handler: 'management.publishCategory', config: adminOnly },
     { method: 'POST', path: '/management/categories/:documentId/unpublish', handler: 'management.unpublishCategory', config: adminOnly },
     { method: 'POST', path: '/management/categories/reorder', handler: 'management.reorderCategories', config: adminOnly },
+
+    { method: 'GET', path: '/management/tags', handler: 'management.listTags', config: adminOnly },
+    { method: 'GET', path: '/management/tags/:documentId', handler: 'management.findTag', config: adminOnly },
+    { method: 'POST', path: '/management/tags', handler: 'management.createTag', config: adminOnly },
+    { method: 'PUT', path: '/management/tags/:documentId', handler: 'management.updateTag', config: adminOnly },
+    { method: 'DELETE', path: '/management/tags/:documentId', handler: 'management.deleteTag', config: adminOnly },
+    { method: 'POST', path: '/management/tags/:documentId/publish', handler: 'management.publishTag', config: adminOnly },
+    { method: 'POST', path: '/management/tags/:documentId/unpublish', handler: 'management.unpublishTag', config: adminOnly },
+    { method: 'POST', path: '/management/tags/:sourceDocumentId/merge/:targetDocumentId', handler: 'management.mergeTags', config: adminOnly },
 
     { method: 'GET', path: '/management/comments', handler: 'management.listComments', config: adminOnly },
     { method: 'GET', path: '/management/comments/:documentId', handler: 'management.findComment', config: adminOnly },
@@ -33,10 +48,14 @@ export default {
     { method: 'POST', path: '/management/comments/:documentId/unpublish', handler: 'management.unpublishComment', config: adminOnly },
 
     { method: 'GET', path: '/management/users', handler: 'management.listUsers', config: adminOnly },
+    { method: 'POST', path: '/management/users/seed', handler: 'management.seedUsers', config: adminOnly },
+    { method: 'POST', path: '/management/users/seed/batch-delete', handler: 'management.batchDeleteSeedUsers', config: adminOnly },
     { method: 'GET', path: '/management/users/:id', handler: 'management.findUser', config: adminOnly },
     { method: 'POST', path: '/management/users', handler: 'management.createUser', config: adminOnly },
     { method: 'PUT', path: '/management/users/:id', handler: 'management.updateUser', config: adminOnly },
     { method: 'DELETE', path: '/management/users/:id', handler: 'management.deleteUser', config: adminOnly },
     { method: 'GET', path: '/management/roles', handler: 'management.listRoles', config: adminOnly },
+
+    { method: 'POST', path: '/management/cron/auto-engage', handler: 'management.triggerAutoEngage', config: adminOnly },
   ],
 };

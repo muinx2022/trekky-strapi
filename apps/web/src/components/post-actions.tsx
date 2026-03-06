@@ -17,7 +17,20 @@ export function PostActions({ targetType, targetDocumentId }: ActionProps) {
   const [copied, setCopied] = useState(false);
   const loadedRef = useRef(false);
 
-  // Load initial like/follow state when user is logged in
+  // Load counts on mount (no auth needed)
+  useEffect(() => {
+    fetch(
+      `/api/interaction-proxy?targetType=${encodeURIComponent(targetType)}&targetDocumentId=${encodeURIComponent(targetDocumentId)}`,
+    )
+      .then((r) => r.json())
+      .then((data) => {
+        setLikes(data.likesCount ?? 0);
+        setFollows(data.followsCount ?? 0);
+      })
+      .catch(() => {/* ignore */});
+  }, [targetType, targetDocumentId]);
+
+  // Load user's like/follow state when logged in
   useEffect(() => {
     if (!isLoggedIn || !jwt || loadedRef.current) return;
     loadedRef.current = true;
@@ -30,6 +43,8 @@ export function PostActions({ targetType, targetDocumentId }: ActionProps) {
       .then((data) => {
         setLiked(!!data.liked);
         setFollowed(!!data.followed);
+        setLikes(data.likesCount ?? 0);
+        setFollows(data.followsCount ?? 0);
       })
       .catch(() => {/* ignore */});
   }, [isLoggedIn, jwt, targetType, targetDocumentId]);

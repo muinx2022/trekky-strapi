@@ -41,6 +41,39 @@ async function hardenUploadSettingsForWindows(strapi: Core.Strapi) {
   }
 }
 
+async function ensureExtendedUsersPermissionsColumns(strapi: Core.Strapi) {
+  const connection = strapi.db?.connection;
+  if (!connection?.schema) {
+    return;
+  }
+
+  try {
+    const hasIsSeeded = await connection.schema.hasColumn('up_users', 'is_seeded');
+    const hasBio = await connection.schema.hasColumn('up_users', 'bio');
+
+    if (!hasIsSeeded || !hasBio) {
+      await connection.schema.alterTable('up_users', (table: any) => {
+        if (!hasIsSeeded) {
+          table.boolean('is_seeded').defaultTo(false);
+        }
+        if (!hasBio) {
+          table.text('bio');
+        }
+      });
+      console.log(
+        `[bootstrap] Added missing up_users columns: ${[
+          !hasIsSeeded ? 'is_seeded' : null,
+          !hasBio ? 'bio' : null,
+        ]
+          .filter(Boolean)
+          .join(', ')}`
+      );
+    }
+  } catch (error) {
+    console.error('[bootstrap] Failed to ensure up_users extended columns:', error);
+  }
+}
+
 export default {
   /**
    * An asynchronous register function that runs before
@@ -48,7 +81,21 @@ export default {
    *
    * This gives you an opportunity to extend code.
    */
-  register(/* { strapi }: { strapi: Core.Strapi } */) {},
+  register() {
+    // On Windows, formidable temp-file cleanup can throw EBUSY when Node still
+    // holds a file handle after upload. Swallow only those errors so the server
+    // doesn't crash — the upload itself has already succeeded at that point.
+    if (process.platform === 'win32') {
+      process.on('uncaughtException', (err: NodeJS.ErrnoException) => {
+        if ((err.code === 'EBUSY' || err.code === 'EPERM') && err.syscall === 'unlink') {
+          console.warn(`[upload] Ignored ${err.code} on temp-file cleanup:`, err.path);
+          return;
+        }
+        // Re-throw anything else so real crashes still surface.
+        throw err;
+      });
+    }
+  },
 
   /**
    * An asynchronous bootstrap function that runs before
@@ -59,6 +106,7 @@ export default {
    */
   async bootstrap({ strapi }: { strapi: Core.Strapi }) {
     await hardenUploadSettingsForWindows(strapi);
+    await ensureExtendedUsersPermissionsColumns(strapi);
 
     try {
       // Find the public role
@@ -75,6 +123,10 @@ export default {
           'api::category.category.findOne',
           'api::comment.comment.find',
           'api::comment.comment.findOne',
+          'api::tag.tag.find',
+          'api::tag.tag.findOne',
+          'api::page.page.find',
+          'api::page.page.findOne',
         ];
 
         // Fetch existing permissions for the public role
@@ -106,112 +158,41 @@ export default {
     }
 
     try {
-      // Recover a usable users-permissions admin account if data was corrupted.
-      const roleQuery = strapi.query('plugin::users-permissions.role');
-      const adminRole = await roleQuery.findOne({
-        where: {
-          $or: [{ type: 'admin' }, { name: 'Admin' }],
-        },
-      });
-
-      if (!adminRole?.id) {
-        console.warn('[bootstrap] Cannot find users-permissions Admin role.');
-        return;
-      }
-
-      const identifier = String(process.env.UP_ADMIN_IDENTIFIER ?? 'admin').trim();
-      const email = String(process.env.UP_ADMIN_EMAIL ?? 'admin@example.com').trim().toLowerCase();
-      const password = String(process.env.UP_ADMIN_PASSWORD ?? 'admin123').trim();
-
-      const users = (await strapi.query('plugin::users-permissions.user').findMany({
-        where: {
-          $or: [{ email }, { username: identifier }],
-        },
-        populate: ['role'],
-      })) as Array<{ id: number; password?: string | null }>;
-
-      const userService = strapi.plugin('users-permissions').service('user');
-      const target = users[0];
-
-      if (target?.id) {
-        await userService.edit(target.id, {
-          username: identifier,
-          email,
-          password,
-          provider: 'local',
-          confirmed: true,
-          blocked: false,
-          role: adminRole.id,
-        });
-        console.log('[bootstrap] Synced users-permissions admin user credentials.');
-      } else {
-        await userService.add({
-          username: identifier,
-          email,
-          password,
-          provider: 'local',
-          confirmed: true,
-          blocked: false,
-          role: adminRole.id,
-        });
-        console.log('[bootstrap] Created users-permissions admin user.');
-      }
-    } catch (error) {
-      console.error('Error bootstrapping users-permissions admin account:', error);
-    }
-
-    try {
-      // Ensure at least one valid authenticated user for web login.
+      // Grant authenticated users permission to create tags via the web.
       const roleQuery = strapi.query('plugin::users-permissions.role');
       const authenticatedRole = await roleQuery.findOne({
-        where: {
-          $or: [{ type: 'authenticated' }, { name: 'Authenticated' }],
-        },
+        where: { $or: [{ type: 'authenticated' }, { name: 'Authenticated' }] },
       });
 
-      if (!authenticatedRole?.id) {
-        console.warn('[bootstrap] Cannot find users-permissions Authenticated role.');
-        return;
-      }
+      if (authenticatedRole?.id) {
+        const permissionsToGrant = [
+          'api::tag.tag.userCreate',
+          'api::tag.tag.find',
+          'api::tag.tag.findOne',
+          'plugin::users-permissions.user.update',
+        ];
 
-      const identifier = String(process.env.UP_WEB_IDENTIFIER ?? 'demo').trim();
-      const email = String(process.env.UP_WEB_EMAIL ?? 'demo@example.com').trim().toLowerCase();
-      const password = String(process.env.UP_WEB_PASSWORD ?? 'demo123').trim();
+        const existingPermissions = await strapi
+          .query('plugin::users-permissions.permission')
+          .findMany({ where: { role: { id: authenticatedRole.id } } });
 
-      const users = (await strapi.query('plugin::users-permissions.user').findMany({
-        where: {
-          $or: [{ email }, { username: identifier }],
-        },
-      })) as Array<{ id: number }>;
+        const existingActionNames = existingPermissions.map((p) => p.action);
+        const permissionsToAdd = permissionsToGrant.filter(
+          (action) => !existingActionNames.includes(action)
+        );
 
-      const userService = strapi.plugin('users-permissions').service('user');
-      const target = users[0];
+        for (const action of permissionsToAdd) {
+          await strapi.query('plugin::users-permissions.permission').create({
+            data: { action, role: authenticatedRole.id },
+          });
+        }
 
-      if (target?.id) {
-        await userService.edit(target.id, {
-          username: identifier,
-          email,
-          password,
-          provider: 'local',
-          confirmed: true,
-          blocked: false,
-          role: authenticatedRole.id,
-        });
-        console.log('[bootstrap] Synced users-permissions demo web user credentials.');
-      } else {
-        await userService.add({
-          username: identifier,
-          email,
-          password,
-          provider: 'local',
-          confirmed: true,
-          blocked: false,
-          role: authenticatedRole.id,
-        });
-        console.log('[bootstrap] Created users-permissions demo web user.');
+        if (permissionsToAdd.length > 0) {
+          console.log('[bootstrap] Granted authenticated role permissions:', permissionsToAdd.join(', '));
+        }
       }
     } catch (error) {
-      console.error('Error bootstrapping users-permissions demo web user:', error);
+      console.error('Error bootstrapping authenticated role permissions:', error);
     }
   },
 };

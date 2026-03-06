@@ -24,7 +24,7 @@ const queryClient = new QueryClient();
 const adminDataProvider = createAdminDataProvider();
 
 type ResourceListPageProps = {
-  resource: "management/posts" | "management/categories" | "management/comments";
+  resource: "management/posts" | "management/categories" | "management/tags" | "management/comments";
   title: string;
   fields: { label: string; key: string }[];
 };
@@ -96,6 +96,7 @@ export function ResourceListPage(props: ResourceListPageProps) {
         resources={[
           { name: "management/posts", list: "/posts" },
           { name: "management/categories", list: "/categories" },
+          { name: "management/tags", list: "/tags" },
           { name: "management/comments", list: "/comments" },
         ]}
       >

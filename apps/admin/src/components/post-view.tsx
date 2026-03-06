@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useEffect, useState } from "react";
 import { MessageSquare, Pencil, Tag } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -10,12 +11,19 @@ import { getPost, listCommentsForTarget, type CommentItem, type PostItem } from 
 type PostViewProps = {
   documentId: string;
 };
+const API_URL = "";
 
 function formatDate(value?: string) {
   if (!value) return "";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "";
   return date.toLocaleString();
+}
+
+function resolveAssetUrl(url?: string | null) {
+  if (!url) return "";
+  if (url.startsWith("http://") || url.startsWith("https://")) return url;
+  return `${API_URL}${url}`;
 }
 
 function buildCommentTree(comments: CommentItem[]) {
@@ -138,6 +146,39 @@ export function PostView({ documentId }: PostViewProps) {
                 </p>
               </div>
               {post.excerpt && <p className="text-sm text-muted-foreground">{post.excerpt}</p>}
+              {(post.images ?? []).length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-sm font-medium">Gallery ({post.images?.length ?? 0})</p>
+                  <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+                    {(post.images ?? []).map((image) => (
+                      <a
+                        key={image.id}
+                        href={resolveAssetUrl(image.url)}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="overflow-hidden rounded-md border"
+                      >
+                        {image.mime?.startsWith("video/") ? (
+                          <video
+                            src={resolveAssetUrl(image.url)}
+                            className="aspect-square h-full w-full object-cover"
+                            controls
+                          />
+                        ) : (
+                          <Image
+                            src={resolveAssetUrl(image.url)}
+                            alt={image.alternativeText || image.name || "Post image"}
+                            width={image.width || 400}
+                            height={image.height || 400}
+                            unoptimized
+                            className="aspect-square h-full w-full object-cover"
+                          />
+                        )}
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )}
               <div className="rounded-md border bg-background p-4">
                 <div className="richtext-content" dangerouslySetInnerHTML={{ __html: post.content ?? "" }} />
               </div>
@@ -150,6 +191,18 @@ export function PostView({ documentId }: PostViewProps) {
                     >
                       <Tag className="mr-1 h-3 w-3" />
                       {category.name}
+                    </span>
+                  ))}
+                </div>
+              )}
+              {(post.tags ?? []).length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {(post.tags ?? []).map((tag) => (
+                    <span
+                      key={tag.documentId}
+                      className="inline-flex items-center rounded-full border border-blue-200 bg-blue-50 px-2 py-1 text-xs text-blue-700"
+                    >
+                      #{tag.name}
                     </span>
                   ))}
                 </div>

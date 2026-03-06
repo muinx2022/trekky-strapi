@@ -1,0 +1,36 @@
+node_modules
+**/node_modules
+**/.next
+**/dist
+**/build
+**/.turbo
+
+# Strapi specific
+apps/api/.tmp
+apps/api/public/uploads
+apps/api/tmp
+
+# Env files (injected at runtime)
+.env
+.env.*
+**/.env
+**/.env.*
+
+# Git
+.git
+.gitignore
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode
+.idea
+*.swp
+*.swo

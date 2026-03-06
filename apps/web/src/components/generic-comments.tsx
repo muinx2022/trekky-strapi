@@ -1,7 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
+import Image from "next/image";
 import { Comment } from "@/lib/strapi";
+import { toAbsoluteMediaUrl } from "@/lib/seo";
 import { RichTextContent } from "./rich-text-content";
 import { TiptapEditor } from "./tiptap-editor";
 import { useAuth } from "./auth-context";
@@ -121,6 +123,7 @@ function CommentCard({
   const replies = repliesByParent[comment.documentId] ?? [];
   const liked = commentLikes[comment.documentId] ?? false;
   const liking = likingIds.has(comment.documentId);
+  const authorAvatarUrl = toAbsoluteMediaUrl(comment.authorAvatarUrl);
 
   const replyParentId = comment.documentId;
 
@@ -129,9 +132,20 @@ function CommentCard({
       <div className={`rounded-lg border border-zinc-200 dark:border-zinc-800 p-4 shadow-sm bg-white dark:bg-zinc-950${depth > 0 ? " border-l-2 border-l-blue-200 dark:border-l-blue-800" : ""}`}>
         <div className="flex justify-between items-start mb-2">
           <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-full bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center text-blue-700 dark:text-blue-300 font-bold text-xs uppercase">
-              {comment.authorName?.[0] ?? "?"}
-            </div>
+            {authorAvatarUrl ? (
+              <Image
+                src={authorAvatarUrl}
+                alt={comment.authorName ? `${comment.authorName} avatar` : "User avatar"}
+                width={28}
+                height={28}
+                className="w-7 h-7 rounded-full object-cover bg-blue-100 dark:bg-blue-900/50"
+                unoptimized
+              />
+            ) : (
+              <div className="w-7 h-7 rounded-full bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center text-blue-700 dark:text-blue-300 font-bold text-xs uppercase">
+                {comment.authorName?.[0] ?? "?"}
+              </div>
+            )}
             <p className="text-sm font-semibold text-zinc-800 dark:text-zinc-200">{comment.authorName}</p>
           </div>
           <span className="text-xs text-zinc-400">{new Date(comment.createdAt).toLocaleDateString("vi-VN")}</span>
@@ -293,12 +307,21 @@ export function GenericComments({ targetType, targetDocumentId, initialComments 
     setSubmitting(false);
     if (!ok) { setErrorMsg(err ?? "Lỗi không xác định."); return; }
 
-    const newComment: Comment = data ?? {
-      id: Date.now(), documentId: String(Date.now()),
-      authorName: authUser.username, content,
-      targetType: targetType as Comment["targetType"],
-      targetDocumentId, createdAt: new Date().toISOString(),
-    };
+    const newComment: Comment = data
+      ? {
+          ...data,
+          authorAvatarUrl: data.authorAvatarUrl ?? authUser.avatarUrl ?? null,
+        }
+      : {
+          id: Date.now(),
+          documentId: String(Date.now()),
+          authorName: authUser.username,
+          content,
+          authorAvatarUrl: authUser.avatarUrl ?? null,
+          targetType: targetType as Comment["targetType"],
+          targetDocumentId,
+          createdAt: new Date().toISOString(),
+        };
     setComments((prev) => [...prev, newComment]);
     setIsJoined(false);
     setCommentHtml("");
@@ -353,16 +376,23 @@ export function GenericComments({ targetType, targetDocumentId, initialComments 
 
     // Always build the optimistic object manually — Strapi's create response
     // does not populate the parent relation, so we must not use data.parent
-    const newReply: Comment = {
-      id: data?.id ?? Date.now(),
-      documentId: data?.documentId ?? String(Date.now()),
-      authorName: authUser.username,
-      content: html,
-      targetType: targetType as Comment["targetType"],
-      targetDocumentId,
-      createdAt: data?.createdAt ?? new Date().toISOString(),
-      parent: { documentId: parentDocumentId },
-    };
+    const newReply: Comment = data
+      ? {
+          ...data,
+          parent: { documentId: parentDocumentId },
+          authorAvatarUrl: data.authorAvatarUrl ?? authUser.avatarUrl ?? null,
+        }
+      : {
+          id: Date.now(),
+          documentId: String(Date.now()),
+          authorName: authUser.username,
+          authorAvatarUrl: authUser.avatarUrl ?? null,
+          content: html,
+          targetType: targetType as Comment["targetType"],
+          targetDocumentId,
+          createdAt: new Date().toISOString(),
+          parent: { documentId: parentDocumentId },
+        };
     setComments((prev) => [...prev, newReply]);
     setReplyingTo(null);
     return { ok: true };

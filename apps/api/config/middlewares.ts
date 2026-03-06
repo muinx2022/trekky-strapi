@@ -19,10 +19,16 @@ const config: Core.Config.Middlewares = [
       formidable: {
         uploadDir: uploadTmpDir,
         keepExtensions: true,
+        maxFileSize: 200 * 1024 * 1024, // 200 MB
       },
     },
   },
-  'strapi::session',
+  {
+    name: 'strapi::session',
+    config: {
+      secure: false, // SSL terminated at Cloudflare proxy
+    },
+  },
   'strapi::favicon',
   'strapi::public',
 ];

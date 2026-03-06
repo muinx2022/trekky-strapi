@@ -4,7 +4,7 @@ import axios from "axios";
 import dataProvider from "@refinedev/simple-rest";
 import { getStoredSession } from "@/lib/admin-auth";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:1337";
+const API_URL = "";
 const STRAPI_REST_API = `${API_URL}/api`;
 
 export function createAdminDataProvider() {

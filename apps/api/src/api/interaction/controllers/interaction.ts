@@ -47,6 +47,43 @@ export default factories.createCoreController('api::interaction.interaction', ({
     return ctx.send({ data: interactions });
   },
 
+  async counts(ctx) {
+    const { targetType } = ctx.query as Record<string, string>;
+    const raw = (ctx.query as any).targetDocumentIds;
+    const ids: string[] = Array.isArray(raw)
+      ? (raw as string[]).filter(Boolean)
+      : typeof raw === 'string' && raw
+      ? [raw]
+      : [];
+
+    if (!targetType || ids.length === 0) {
+      return ctx.send({ data: { likes: {}, follows: {} } });
+    }
+
+    const interactions = await strapi.db.query('api::interaction.interaction').findMany({
+      where: {
+        targetType,
+        targetDocumentId: { $in: ids },
+        actionType: { $in: ['like', 'follow'] },
+      },
+      select: ['actionType', 'targetDocumentId'],
+      limit: 100000,
+    });
+
+    const likes: Record<string, number> = {};
+    const follows: Record<string, number> = {};
+
+    for (const i of interactions as Array<{ actionType: string; targetDocumentId: string }>) {
+      if (i.actionType === 'like') {
+        likes[i.targetDocumentId] = (likes[i.targetDocumentId] ?? 0) + 1;
+      } else if (i.actionType === 'follow') {
+        follows[i.targetDocumentId] = (follows[i.targetDocumentId] ?? 0) + 1;
+      }
+    }
+
+    return ctx.send({ data: { likes, follows } });
+  },
+
   async toggle(ctx) {
     const user = await resolveAuthUser(ctx, strapi);
     if (!user) {

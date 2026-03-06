@@ -2,6 +2,7 @@ import { factories } from '@strapi/strapi';
 
 const UID = 'api::comment.comment';
 const POST_UID = 'api::post.post';
+const USER_UID = 'plugin::users-permissions.user';
 
 function toPagination(query: any) {
   const page = Math.max(1, Number(query?.pagination?.page ?? 1) || 1);
@@ -62,6 +63,86 @@ async function normalizeCommentPayload(strapi: any, payload: any, currentDocumen
   return data;
 }
 
+function normalizeIdentity(value: unknown) {
+  return String(value ?? '').trim().toLowerCase();
+}
+
+async function enrichCommentsWithAvatar(strapi: any, rows: any[]) {
+  if (!rows.length) {
+    return rows;
+  }
+
+  const emails = Array.from(
+    new Set(
+      rows
+        .map((row) => normalizeIdentity(row?.authorEmail))
+        .filter(Boolean),
+    ),
+  );
+  const usernames = Array.from(
+    new Set(
+      rows
+        .map((row) => normalizeIdentity(row?.authorName))
+        .filter(Boolean),
+    ),
+  );
+
+  if (!emails.length && !usernames.length) {
+    return rows;
+  }
+
+  const orFilters: any[] = [];
+  emails.forEach((email) => {
+    orFilters.push({ email: { $eqi: email } });
+  });
+  usernames.forEach((username) => {
+    orFilters.push({ username: { $eqi: username } });
+  });
+
+  const users = (await strapi.query(USER_UID).findMany({
+    where: { $or: orFilters },
+    select: ['id', 'username', 'email'],
+    populate: {
+      avatar: {
+        select: ['url'],
+      },
+    },
+  })) as Array<{
+    username?: string | null;
+    email?: string | null;
+    avatar?: { url?: string | null } | null;
+  }>;
+
+  const avatarByEmail = new Map<string, string>();
+  const avatarByUsername = new Map<string, string>();
+
+  for (const user of users ?? []) {
+    const avatarUrl = user?.avatar?.url;
+    if (!avatarUrl) {
+      continue;
+    }
+    const emailKey = normalizeIdentity(user.email);
+    if (emailKey) {
+      avatarByEmail.set(emailKey, avatarUrl);
+    }
+    const usernameKey = normalizeIdentity(user.username);
+    if (usernameKey) {
+      avatarByUsername.set(usernameKey, avatarUrl);
+    }
+  }
+
+  return rows.map((row) => {
+    const avatarUrl =
+      avatarByEmail.get(normalizeIdentity(row?.authorEmail)) ??
+      avatarByUsername.get(normalizeIdentity(row?.authorName)) ??
+      null;
+    return {
+      ...row,
+      authorAvatarUrl: avatarUrl,
+    };
+  });
+}
+
 export default factories.createCoreService(UID, ({ strapi }) => ({
   async listPublic(query: any) {
     const { page, pageSize } = toPagination(query);
@@ -82,8 +163,10 @@ export default factories.createCoreService(UID, ({ strapi }) => ({
       strapi.documents(UID).count({ filters }),
     ]);
 
+    const enriched = await enrichCommentsWithAvatar(strapi, data as any[]);
+
     return {
-      data,
+      data: enriched,
       meta: {
         pagination: {
           page,
@@ -186,7 +269,7 @@ export default factories.createCoreService(UID, ({ strapi }) => ({
   },
 
   async findOnePublic(documentId: string, query: any) {
-    return strapi.documents(UID).findOne({
+    const data = await strapi.documents(UID).findOne({
       documentId,
       populate: query?.populate ?? {
         parent: {
@@ -196,26 +279,39 @@ export default factories.createCoreService(UID, ({ strapi }) => ({
       fields: query?.fields,
       locale: query?.locale,
     });
+    if (!data) {
+      return data;
+    }
+    const [enriched] = await enrichCommentsWithAvatar(strapi, [data]);
+    return enriched;
   },
 
   async createPublic(payload: any) {
     const data = await normalizeCommentPayload(strapi, payload);
-    return strapi.documents(UID).create({ data });
+    const created = await strapi.documents(UID).create({ data });
+    const [enriched] = await enrichCommentsWithAvatar(strapi, [created]);
+    return enriched;
   },
 
   async createForAdmin(payload: any) {
     const data = await normalizeCommentPayload(strapi, payload);
-    return strapi.documents(UID).create({ data });
+    const created = await strapi.documents(UID).create({ data });
+    const [enriched] = await enrichCommentsWithAvatar(strapi, [created]);
+    return enriched;
   },
 
   async updatePublic(documentId: string, payload: any) {
     const data = await normalizeCommentPayload(strapi, payload, documentId);
-    return strapi.documents(UID).update({ documentId, data });
+    const updated = await strapi.documents(UID).update({ documentId, data });
+    const [enriched] = await enrichCommentsWithAvatar(strapi, [updated]);
+    return enriched;
   },
 
   async updateForAdmin(documentId: string, payload: any) {
     const data = await normalizeCommentPayload(strapi, payload, documentId);
-    return strapi.documents(UID).update({ documentId, data });
+    const updated = await strapi.documents(UID).update({ documentId, data });
+    const [enriched] = await enrichCommentsWithAvatar(strapi, [updated]);
+    return enriched;
   },
 
   async deletePublic(documentId: string) {

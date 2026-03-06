@@ -213,7 +213,7 @@ export function CommentForm({ mode, documentId }: CommentFormProps) {
       const payload = {
         ...form,
         content,
-        parent: form.parentDocumentId || null,
+        parent: form.parentDocumentId ? { documentId: form.parentDocumentId } : null,
       };
       if (mode === "edit" && documentId) {
         await updateComment(documentId, payload);

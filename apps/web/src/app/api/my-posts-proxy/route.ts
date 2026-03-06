@@ -14,14 +14,20 @@ type PostRow = {
   updatedAt?: string;
   publishedAt?: string | null;
   categories?: Array<{ id?: number; documentId?: string; name?: string; slug?: string }>;
+  tags?: Array<{ id?: number; documentId?: string; name?: string; slug?: string }>;
+  images?: Array<{ id?: number; url?: string; mime?: string | null; alternativeText?: string | null; width?: number; height?: number }>;
 };
 type NormalizedPost = PostRow & { status: PublishStatus };
 type CategoryLookupPayload = {
   data?: Array<{ id?: number; documentId?: string }>;
 };
+type FetchPostsByStatusResult =
+  | { rows: NormalizedPost[] }
+  | { error: NextResponse };
 
 function slugify(input: string) {
   return input
+    .replace(/[đĐ]/g, "d")
     .toLowerCase()
     .trim()
     .normalize("NFD")
@@ -60,7 +66,11 @@ function sortPostsByLatest(rows: NormalizedPost[]) {
   });
 }
 
-async function fetchPostsByStatus(authHeader: string, authorId: number, status: PublishStatus) {
+async function fetchPostsByStatus(
+  authHeader: string,
+  authorId: number,
+  status: PublishStatus,
+): Promise<FetchPostsByStatusResult> {
   const query = new URLSearchParams({
     status,
     "pagination[page]": "1",
@@ -131,6 +141,7 @@ function mergePostVersions(draftRows: NormalizedPost[], publishedRows: Normalize
       id: existing.id ?? row.id,
       slug: existing.slug ?? row.slug,
       categories: existing.categories ?? row.categories,
+      tags: existing.tags ?? row.tags,
       status: "published",
       publishedAt: row.publishedAt ?? null,
     });
@@ -143,17 +154,17 @@ async function fetchOwnedPost(
   authHeader: string,
   userId: number,
   documentId: string,
-) {
+): Promise<{ post: NormalizedPost } | { error: NextResponse }> {
   const [publishedResult, draftResult] = await Promise.all([
     fetchPostsByStatus(authHeader, userId, "published"),
     fetchPostsByStatus(authHeader, userId, "draft"),
   ]);
 
   if ("error" in publishedResult) {
-    return publishedResult;
+    return { error: publishedResult.error };
   }
   if ("error" in draftResult) {
-    return draftResult;
+    return { error: draftResult.error };
   }
 
   const mergedRows = mergePostVersions(draftResult.rows, publishedResult.rows);
@@ -201,6 +212,7 @@ async function resolveCategoryIds(authHeader: string, categoryDocumentIds: strin
     .map((item) => item.id)
     .filter((id): id is number => Number.isFinite(id));
 }
+
 
 async function publishDocument(authHeader: string, documentId: string) {
   const tryPaths = [
@@ -342,6 +354,8 @@ export async function POST(request: Request) {
     title?: string;
     content?: string;
     categories?: string[];
+    tags?: string[];
+    imageIds?: number[];
   };
 
   const title = String(body.title ?? "").trim();
@@ -350,6 +364,14 @@ export async function POST(request: Request) {
     ? body.categories
         .map((item) => String(item ?? "").trim())
         .filter(Boolean)
+    : [];
+  const tagDocumentIds = Array.isArray(body.tags)
+    ? body.tags
+        .map((item) => String(item ?? "").trim())
+        .filter(Boolean)
+    : [];
+  const imageIds = Array.isArray(body.imageIds)
+    ? body.imageIds.filter((id) => Number.isFinite(id))
     : [];
 
   if (!title || !content || content === "<p></p>") {
@@ -378,6 +400,8 @@ export async function POST(request: Request) {
           slug,
           content,
           categories: categoryIds,
+          tags: tagDocumentIds,
+          images: imageIds,
         },
       }),
     });
@@ -407,6 +431,8 @@ export async function PUT(request: Request) {
     title?: string;
     content?: string;
     categories?: string[];
+    tags?: string[];
+    imageIds?: number[];
   };
 
   const documentId = String(body.documentId ?? "").trim();
@@ -417,6 +443,14 @@ export async function PUT(request: Request) {
         .map((item) => String(item ?? "").trim())
         .filter(Boolean)
     : [];
+  const tagDocumentIds = Array.isArray(body.tags)
+    ? body.tags
+        .map((item) => String(item ?? "").trim())
+        .filter(Boolean)
+    : [];
+  const imageIds = Array.isArray(body.imageIds)
+    ? body.imageIds.filter((id) => Number.isFinite(id))
+    : undefined;
 
   if (!documentId || !title || !content || content === "<p></p>") {
     return NextResponse.json({ error: "documentId, title and content are required" }, { status: 400 });
@@ -446,6 +480,8 @@ export async function PUT(request: Request) {
           title,
           content,
           categories: categoryIds,
+          tags: tagDocumentIds,
+          ...(imageIds !== undefined && { images: imageIds }),
         },
       }),
     });

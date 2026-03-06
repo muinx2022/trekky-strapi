@@ -37,6 +37,15 @@ export default {
       },
     },
     {
+      method: 'GET',
+      path: '/posts/by-username/:username',
+      handler: 'post.byUsername',
+      config: {
+        policies: [],
+        middlewares: [],
+      },
+    },
+    {
       method: 'POST',
       path: '/posts/:documentId/user-unpublish',
       handler: 'post.userUnpublish',

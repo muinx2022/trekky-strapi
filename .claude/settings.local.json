@@ -1,7 +1,14 @@
 {
   "permissions": {
     "allow": [
-      "WebFetch(domain:localhost)"
+      "WebFetch(domain:localhost)",
+      "Bash(pnpm --filter web add @tiptap/core)",
+      "Bash(pnpm add pg --filter api)",
+      "Bash(docker info --format \"Server Version: {{.ServerVersion}}\")",
+      "Bash(docker build -f apps/api/Dockerfile -t muinx/trekky-api:latest .)",
+      "Bash(docker build -f apps/web/Dockerfile --build-arg NEXT_PUBLIC_API_URL=https://api.trekky.vn -t muinx/trekky-web:latest .)",
+      "Bash(docker build -f apps/admin/Dockerfile --build-arg NEXT_PUBLIC_API_URL=https://api.trekky.vn -t muinx/trekky-admin:latest .)",
+      "Bash(docker push muinx/trekky-api:latest)"
     ]
   }
 }

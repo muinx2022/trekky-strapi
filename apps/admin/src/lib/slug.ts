@@ -1,5 +1,6 @@
 export function slugify(input: string) {
   return input
+    .replace(/[đĐ]/g, "d")
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase()

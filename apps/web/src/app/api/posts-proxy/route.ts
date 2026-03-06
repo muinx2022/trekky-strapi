@@ -6,9 +6,11 @@ export async function GET(request: Request) {
   const page = parseInt(searchParams.get("page") || "1", 10);
   const pageSize = parseInt(searchParams.get("pageSize") || "10", 10);
   const categorySlug = searchParams.get("category") || undefined;
+  const tagSlug = searchParams.get("tag") || undefined;
+  const authorUsername = searchParams.get("author") || undefined;
 
   try {
-    const data = await getPostsWithPagination(page, pageSize, categorySlug);
+    const data = await getPostsWithPagination(page, pageSize, categorySlug, tagSlug, authorUsername);
     return NextResponse.json(data);
   } catch (error) {
     console.error("Failed to fetch posts", error);

@@ -1,4 +1,5 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:1337";
+// STRAPI_INTERNAL_URL: server-side only, set this in Docker to reach Strapi via internal network
+const API_URL = process.env.STRAPI_INTERNAL_URL ?? process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:1337";
 
 type StrapiListResponse<T> = {
   data: T[];
@@ -18,6 +19,14 @@ export type Category = {
   children?: Category[];
 };
 
+export type Tag = {
+  id: number;
+  documentId: string;
+  name: string;
+  slug: string;
+  description?: string;
+};
+
 type CategoryNode = {
   documentId: string;
   slug: string;
@@ -30,11 +39,28 @@ export type Comment = {
   id: number;
   documentId: string;
   authorName: string;
+  authorAvatarUrl?: string | null;
   content: string;
   targetType: "post" | "page" | "product" | "other";
   targetDocumentId: string;
   createdAt: string;
   parent?: { documentId: string } | null;
+};
+
+export type StrapiImage = {
+  id: number;
+  url: string;
+  mime?: string | null;
+  alternativeText?: string | null;
+  width?: number;
+  height?: number;
+  name?: string;
+};
+
+export type PostAuthor = {
+  id: number;
+  username: string;
+  avatar?: StrapiImage | null;
 };
 
 export type Post = {
@@ -45,6 +71,11 @@ export type Post = {
   excerpt?: string;
   content: string;
   categories?: Category[];
+  tags?: Tag[];
+  images?: StrapiImage[];
+  author?: PostAuthor;
+  createdAt?: string;
+  updatedAt?: string;
   publishedAt?: string;
   status?: "draft" | "published";
   commentsCount?: number;
@@ -91,7 +122,7 @@ async function strapiFetchNoStore<T>(path: string): Promise<T> {
 
 export async function getPosts() {
   const query =
-    "/api/posts?sort=publishedAt:desc&populate[categories][fields][0]=name&populate[categories][fields][1]=slug";
+    "/api/posts?sort=createdAt:desc&populate[categories][fields][0]=name&populate[categories][fields][1]=slug&populate[tags][fields][0]=name&populate[tags][fields][1]=slug";
   const payload = await strapiFetch<StrapiListResponse<Post>>(query);
   return payload.data;
 }
@@ -99,14 +130,20 @@ export async function getPosts() {
 export async function getTopLevelCategories() {
   // Populate parent field so we can filter client-side (Strapi v5 null-relation filter may not work reliably)
   const payload = await strapiFetch<StrapiListResponse<Category>>(
-    "/api/categories?populate[parent][fields][0]=id&sort=name:asc"
+    "/api/categories?populate[parent][fields][0]=id&sort=sortOrder:asc&sort=name:asc"
   );
   return payload.data.filter((cat) => !cat.parent);
 }
 
-export async function getPostsWithPagination(page: number = 1, pageSize: number = 10, categorySlug?: string) {
-  let query = `/api/posts?sort=publishedAt:desc&populate[categories][fields][0]=name&populate[categories][fields][1]=slug&pagination[page]=${page}&pagination[pageSize]=${pageSize}`;
-  
+export async function getPostsWithPagination(
+  page: number = 1,
+  pageSize: number = 10,
+  categorySlug?: string,
+  tagSlug?: string,
+  authorUsername?: string,
+) {
+  let query = `/api/posts?sort=createdAt:desc&populate[categories][fields][0]=name&populate[categories][fields][1]=slug&populate[tags][fields][0]=name&populate[tags][fields][1]=slug&populate[images][fields][0]=url&populate[images][fields][1]=alternativeText&populate[author][fields][0]=id&populate[author][fields][1]=username&populate[author][populate][avatar][fields][0]=url&pagination[page]=${page}&pagination[pageSize]=${pageSize}`;
+
   if (categorySlug) {
     const categorySlugs = await getCategorySubtreeSlugs(categorySlug);
     if (categorySlugs.length > 0) {
@@ -117,10 +154,36 @@ export async function getPostsWithPagination(page: number = 1, pageSize: number 
       query += `&filters[categories][slug][$eq]=${encodeURIComponent(categorySlug)}`;
     }
   }
-  
+
+  if (tagSlug) {
+    query += `&filters[tags][slug][$eq]=${encodeURIComponent(tagSlug)}`;
+  }
+
+  if (authorUsername) {
+    return getPostsByUsername(authorUsername, page, pageSize);
+  }
+
   const payload = await strapiFetch<{ data: Post[]; meta: { pagination: { page: number; pageSize: number; pageCount: number; total: number } } }>(query);
   payload.data = await attachPostStats(payload.data);
   return payload;
+}
+
+export async function getPostsByUsername(
+  username: string,
+  page: number = 1,
+  pageSize: number = 10,
+) {
+  const query = `/api/posts/by-username/${encodeURIComponent(username)}?page=${page}&pageSize=${pageSize}`;
+  const payload = await strapiFetch<{ data: Post[]; meta: { pagination: { page: number; pageSize: number; pageCount: number; total: number } } }>(query);
+  payload.data = await attachPostStats(payload.data);
+  return payload;
+}
+
+export async function getPublishedPostsCount() {
+  const payload = await strapiFetchNoStore<{
+    meta?: { pagination?: { total?: number } };
+  }>("/api/posts?pagination[page]=1&pagination[pageSize]=1&fields[0]=id");
+  return payload.meta?.pagination?.total ?? 0;
 }
 
 type TargetIdRow = { targetDocumentId: string };
@@ -162,8 +225,12 @@ async function attachPostStats(posts: Post[]) {
     .map((post, index) => `&filters[targetDocumentId][$in][${index}]=${encodeURIComponent(post.documentId)}`)
     .join("");
 
+  const idsQuery = posts
+    .map((post, index) => `targetDocumentIds[${index}]=${encodeURIComponent(post.documentId)}`)
+    .join("&");
+
   let commentTargetIds: string[] = [];
-  let likeTargetIds: string[] = [];
+  let likesMap: Record<string, number> = {};
 
   try {
     commentTargetIds = await fetchAllTargetIds(`/api/comments?filters[targetType][$eq]=post${inFilters}`);
@@ -172,11 +239,12 @@ async function attachPostStats(posts: Post[]) {
   }
 
   try {
-    likeTargetIds = await fetchAllTargetIds(
-      `/api/interactions?filters[actionType][$eq]=like&filters[targetType][$eq]=post${inFilters}`,
+    const countsPayload = await strapiFetch<{ data: { likes: Record<string, number> } }>(
+      `/api/interactions/counts?targetType=post&${idsQuery}`,
     );
+    likesMap = countsPayload?.data?.likes ?? {};
   } catch {
-    likeTargetIds = [];
+    likesMap = {};
   }
 
   const commentsCountMap = new Map<string, number>();
@@ -184,15 +252,10 @@ async function attachPostStats(posts: Post[]) {
     commentsCountMap.set(targetId, (commentsCountMap.get(targetId) ?? 0) + 1);
   }
 
-  const likesCountMap = new Map<string, number>();
-  for (const targetId of likeTargetIds) {
-    likesCountMap.set(targetId, (likesCountMap.get(targetId) ?? 0) + 1);
-  }
-
   return posts.map((post) => ({
     ...post,
     commentsCount: commentsCountMap.get(post.documentId) ?? 0,
-    likesCount: likesCountMap.get(post.documentId) ?? 0,
+    likesCount: likesMap[post.documentId] ?? 0,
   }));
 }
 
@@ -239,9 +302,16 @@ async function getCategorySubtreeSlugs(categorySlug: string) {
 }
 
 export async function getTopPosts(limit: number = 10) {
-  // Using newest posts as a proxy for top posts since Strapi doesn't natively sort by comment count out-of-the-box
-  const query = `/api/posts?sort=createdAt:desc&pagination[limit]=${limit}`;
+  const query = `/api/posts?sort=createdAt:desc&pagination[page]=1&pagination[pageSize]=${limit}&fields[0]=title&fields[1]=slug&fields[2]=documentId`;
   const payload = await strapiFetch<StrapiListResponse<Post>>(query);
+  return await attachPostStats(payload.data);
+}
+
+export async function getTopTags(limit: number = 12) {
+  const query =
+    `/api/tags?sort=updatedAt:desc&pagination[page]=1&pagination[pageSize]=${limit}` +
+    "&fields[0]=name&fields[1]=slug&fields[2]=documentId";
+  const payload = await strapiFetch<StrapiListResponse<Tag>>(query);
   return payload.data;
 }
 
@@ -249,9 +319,23 @@ export async function getPostBySlug(slug: string) {
   const query =
     `/api/posts?filters[slug][$eq]=${encodeURIComponent(slug)}` +
     "&populate[categories][fields][0]=name" +
-    "&populate[categories][fields][1]=slug";
+    "&populate[categories][fields][1]=slug" +
+    "&populate[tags][fields][0]=name" +
+    "&populate[tags][fields][1]=slug" +
+    "&populate[images][fields][0]=url&populate[images][fields][1]=alternativeText" +
+    "&populate[author][fields][0]=id&populate[author][fields][1]=username" +
+    "&populate[author][populate][avatar][fields][0]=url";
 
   const payload = await strapiFetch<StrapiListResponse<Post>>(query);
+  return payload.data[0] ?? null;
+}
+
+export async function getTagBySlug(slug: string) {
+  const payload = await strapiFetch<StrapiListResponse<Tag>>(
+    "/api/tags?" +
+      `filters[slug][$eq]=${encodeURIComponent(slug)}` +
+      "&fields[0]=name&fields[1]=slug&fields[2]=documentId&fields[3]=description",
+  );
   return payload.data[0] ?? null;
 }
 
@@ -323,11 +407,53 @@ export async function getCategoryBySlug(slug: string) {
 export async function getPostByDocumentId(documentId: string) {
   try {
     const payload = await strapiFetch<StrapiListResponse<Post>>(
-      `/api/posts?filters[documentId][$eq]=${documentId}&populate=*`,
+      `/api/posts?filters[documentId][$eq]=${documentId}&populate[categories][fields][0]=name&populate[categories][fields][1]=slug&populate[tags][fields][0]=name&populate[tags][fields][1]=slug&populate[images][fields][0]=url&populate[images][fields][1]=alternativeText&populate[author][fields][0]=id&populate[author][fields][1]=username&populate[author][populate][avatar][fields][0]=url`,
     );
     return payload.data[0] ?? null;
   } catch (error) {
     console.error("Error fetching post by documentId:", error);
+    return null;
+  }
+}
+
+export type StrapiPage = {
+  id: number;
+  documentId: string;
+  title: string;
+  slug: string;
+  type: "home" | "footer";
+  content?: string | null;
+};
+
+export async function getPageByType(type: "home" | "footer"): Promise<StrapiPage | null> {
+  try {
+    const payload = await strapiFetch<StrapiListResponse<StrapiPage>>(
+      `/api/pages?filters[type][$eq]=${type}&pagination[pageSize]=1`,
+    );
+    return payload.data[0] ?? null;
+  } catch {
+    return null;
+  }
+}
+
+export async function getFooterPages(): Promise<StrapiPage[]> {
+  try {
+    const payload = await strapiFetch<StrapiListResponse<StrapiPage>>(
+      "/api/pages?filters[type][$eq]=footer&sort=title:asc&pagination[pageSize]=50",
+    );
+    return payload.data;
+  } catch {
+    return [];
+  }
+}
+
+export async function getPageBySlug(slug: string): Promise<StrapiPage | null> {
+  try {
+    const payload = await strapiFetch<StrapiListResponse<StrapiPage>>(
+      `/api/pages?filters[slug][$eq]=${encodeURIComponent(slug)}&pagination[pageSize]=1`,
+    );
+    return payload.data[0] ?? null;
+  } catch {
     return null;
   }
 }

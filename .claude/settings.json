@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ssh -t muinx-home \"sudo rm -rf ~/projects/trekky-payload && echo ''DIR REMOVED OK''\")",
+      "WebFetch(domain:www.templateshub.net)",
+      "WebFetch(domain:wpkixx.com)"
+    ],
+    "additionalDirectories": [
+      "C:\\Users\\nguye\\.claude\\projects\\d--Projects-trekky-strapi",
+      "d:\\Projects\\trekky-strapi\\apps\\web\\src\\app\\u"
+    ]
+  }
+}

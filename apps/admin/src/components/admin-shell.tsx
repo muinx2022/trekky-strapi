@@ -6,8 +6,9 @@ import {
 } from "@refinedev/core";
 import routerProvider from "@refinedev/nextjs-router";
 import { QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-query";
-import { FileText, Tag, MessageSquare, ArrowRight } from "lucide-react";
+import { FileText, Tag, MessageSquare, ArrowRight, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useState } from "react";
 import {
   Card,
   CardContent,
@@ -23,7 +24,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { createAdminDataProvider } from "@/lib/refine-admin-provider";
-import { getAdminDashboard, type AdminDashboardData } from "@/lib/admin-api";
+import { getAdminDashboard, triggerAutoEngage, type AdminDashboardData } from "@/lib/admin-api";
 
 const queryClient = new QueryClient();
 const adminDataProvider = createAdminDataProvider();
@@ -70,6 +71,22 @@ function ResourceOverview() {
     queryFn: getAdminDashboard,
   });
 
+  const [engaging, setEngaging] = useState(false);
+  const [engageMsg, setEngageMsg] = useState<{ ok: boolean; text: string } | null>(null);
+
+  async function handleAutoEngage() {
+    setEngaging(true);
+    setEngageMsg(null);
+    try {
+      const res = await triggerAutoEngage();
+      setEngageMsg({ ok: true, text: res.message });
+    } catch (err) {
+      setEngageMsg({ ok: false, text: err instanceof Error ? err.message : "Failed" });
+    } finally {
+      setEngaging(false);
+    }
+  }
+
   const data = dashboard.data;
   const postRows = data?.recent.posts ?? [];
   const categoryRows = data?.recent.categories ?? [];
@@ -81,9 +98,22 @@ function ResourceOverview() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-xl font-semibold tracking-tight">Dashboard</h1>
-        <p className="text-sm text-muted-foreground">Overview of your content</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-xl font-semibold tracking-tight">Dashboard</h1>
+          <p className="text-sm text-muted-foreground">Overview of your content</p>
+        </div>
+        <div className="flex items-center gap-2">
+          {engageMsg && (
+            <span className={`text-xs ${engageMsg.ok ? "text-green-600" : "text-destructive"}`}>
+              {engageMsg.text}
+            </span>
+          )}
+          <Button size="sm" variant="outline" onClick={handleAutoEngage} disabled={engaging}>
+            <Zap className="mr-1 h-3.5 w-3.5" />
+            {engaging ? "Running..." : "Auto Engage"}
+          </Button>
+        </div>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-3">
@@ -231,7 +261,9 @@ export function AdminShell() {
         routerProvider={routerProvider}
         resources={[
           { name: "management/posts", list: "/posts" },
+          { name: "management/pages", list: "/pages" },
           { name: "management/categories", list: "/categories" },
+          { name: "management/tags", list: "/tags" },
           { name: "management/comments", list: "/comments" },
         ]}
       >

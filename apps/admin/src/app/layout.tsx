@@ -14,8 +14,11 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Starter Admin",
-  description: "Refine admin with shadcn and Strapi REST API",
+  title: {
+    default: "Administration - Trekky.net",
+    template: "%s - Trekky.net",
+  },
+  description: "Trekky administration panel",
 };
 
 export default function RootLayout({

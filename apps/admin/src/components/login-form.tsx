@@ -63,7 +63,7 @@ export function LoginForm() {
       </div>
       <Card className="w-full max-w-md">
         <CardHeader>
-          <CardTitle>Admin Login</CardTitle>
+          <CardTitle>Trekky Administration</CardTitle>
         </CardHeader>
         <CardContent>
           <form className="space-y-4" onSubmit={onSubmit}>

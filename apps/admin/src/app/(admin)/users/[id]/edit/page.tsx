@@ -1,6 +1,10 @@
+import type { Metadata } from "next";
 import { UserForm } from "@/components/user-form";
 
 export const dynamic = "force-dynamic";
+export const metadata: Metadata = {
+  title: "Edit User",
+};
 
 type EditUserPageProps = {
   params: Promise<{ id: string }>;

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { Fragment } from "react";
 import Link from "next/link";
@@ -274,7 +274,7 @@ export function PostsManager() {
               </TableHeader>
               <TableBody>
                 {rows.map((item) => (
-                <TableRow key={item.documentId}>
+                <TableRow key={item.documentId} className="group">
                   <TableCell>{item.id}</TableCell>
                   <TableCell>
                     <div>
@@ -293,7 +293,7 @@ export function PostsManager() {
                   <TableCell className="text-center">
                     <button
                       type="button"
-                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                      className={`relative inline-flex h-4 w-7 items-center rounded-full transition-colors ${
                         item.publishedAt ? "bg-emerald-600" : "bg-muted-foreground/30"
                       }`}
                       onClick={() => onTogglePublished(item)}
@@ -301,8 +301,8 @@ export function PostsManager() {
                       title={item.publishedAt ? "Published" : "Draft"}
                     >
                       <span
-                        className={`inline-block h-5 w-5 transform rounded-full bg-background shadow transition-transform ${
-                          item.publishedAt ? "translate-x-5" : "translate-x-0.5"
+                        className={`inline-block h-3 w-3 transform rounded-full bg-background shadow transition-transform ${
+                          item.publishedAt ? "translate-x-[14px]" : "translate-x-0.5"
                         }`}
                       />
                       <span className="sr-only">{item.publishedAt ? "Published" : "Draft"}</span>
@@ -310,7 +310,7 @@ export function PostsManager() {
                   </TableCell>
                   <TableCell className="text-center">{item.commentsCount ?? 0}</TableCell>
                   <TableCell className="text-right">
-                    <div className="ml-auto flex w-fit gap-0.5">
+                    <div className="ml-auto flex w-fit gap-1.5 opacity-100 pointer-events-auto transition-opacity duration-150 md:opacity-0 md:pointer-events-none md:group-hover:opacity-100 md:group-hover:pointer-events-auto md:group-focus-within:opacity-100 md:group-focus-within:pointer-events-auto">
                       <IconAction
                         label="View post"
                         icon={<Eye />}
@@ -356,3 +356,5 @@ export function PostsManager() {
     </div>
   );
 }
+
+

@@ -1,13 +1,14 @@
 "use client";
 
-import { ChangeEvent, useEffect, useRef, useState } from "react";
-import { Bold, Heading2, ImagePlus, Italic, List, ListOrdered, Redo2, Undo2, Youtube } from "lucide-react";
+import { ChangeEvent, useEffect, useRef } from "react";
 import Image from "@tiptap/extension-image";
 import YoutubeExtension from "@tiptap/extension-youtube";
 import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
+import { Bold, Heading2, ImagePlus, Italic, List, ListOrdered, Redo2, Undo2, Youtube } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { registerPendingMedia } from "@/lib/richtext-media";
+import { nameContentFile } from "@/lib/media-naming";
 import { cn } from "@/lib/utils";
 
 type RichTextEditorProps = {
@@ -18,27 +19,6 @@ type RichTextEditorProps = {
   onBlur?: () => void;
 };
 
-type LocalImagePayload = {
-  src: string;
-  alt?: string;
-  title?: string;
-  localMediaId?: string;
-};
-
-const ExtendedImage = Image.extend({
-  addAttributes() {
-    return {
-      ...this.parent?.(),
-      localMediaId: {
-        default: null,
-        parseHTML: (element) => element.getAttribute("data-local-media-id"),
-        renderHTML: (attributes) =>
-          attributes.localMediaId ? { "data-local-media-id": attributes.localMediaId } : {},
-      },
-    };
-  },
-});
-
 export function RichTextEditor({
   value,
   onChange,
@@ -47,12 +27,12 @@ export function RichTextEditor({
   onBlur,
 }: RichTextEditorProps) {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const [processingImage, setProcessingImage] = useState(false);
+  const cameraInputRef = useRef<HTMLInputElement | null>(null);
 
   const editor = useEditor({
     extensions: [
       StarterKit,
-      ExtendedImage,
+      Image.configure({ inline: false, allowBase64: false }),
       YoutubeExtension.configure({
         controls: true,
         nocookie: true,
@@ -85,7 +65,7 @@ export function RichTextEditor({
     }
   }, [editor, value]);
 
-  const onUploadImage = async (event: ChangeEvent<HTMLInputElement>) => {
+  const onUploadImage = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     event.target.value = "";
 
@@ -93,24 +73,14 @@ export function RichTextEditor({
       return;
     }
 
-    setProcessingImage(true);
-    try {
-      const pending = registerPendingMedia(file);
-      editor
-        .chain()
-        .focus()
-        .setImage({
-          src: pending.previewUrl,
-          alt: file.name,
-          localMediaId: pending.id,
-        } as unknown as LocalImagePayload)
-        .run();
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Failed to process image";
-      alert(message);
-    } finally {
-      setProcessingImage(false);
+    if (cameraInputRef.current) {
+      cameraInputRef.current.value = "";
     }
+
+    const renamed = nameContentFile(file);
+    const blobUrl = URL.createObjectURL(renamed);
+    registerPendingMedia(blobUrl, renamed);
+    editor.chain().focus().setImage({ src: blobUrl, alt: renamed.name }).run();
   };
 
   const onEmbedYoutube = () => {
@@ -190,7 +160,6 @@ export function RichTextEditor({
           onClick={() => fileInputRef.current?.click()}
           aria-label="Upload image"
           title="Upload image"
-          disabled={processingImage}
         >
           <ImagePlus />
         </Button>
@@ -230,6 +199,14 @@ export function RichTextEditor({
           ref={fileInputRef}
           type="file"
           accept="image/*"
+          className="hidden"
+          onChange={onUploadImage}
+        />
+        <input
+          ref={cameraInputRef}
+          type="file"
+          accept="image/*"
+          capture="environment"
           className="hidden"
           onChange={onUploadImage}
         />

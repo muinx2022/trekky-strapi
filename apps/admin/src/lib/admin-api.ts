@@ -1,8 +1,10 @@
 "use client";
 
 import { getStoredSession } from "@/lib/admin-auth";
+import { nameGalleryFile } from "@/lib/media-naming";
+import { uploadMediaFiles } from "@/lib/post-media";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:1337";
+const API_URL = "";
 const DEFAULT_PAGE = 1;
 const DEFAULT_PAGE_SIZE = 10;
 
@@ -29,7 +31,9 @@ export type PostItem = {
   updatedAt?: string;
   publishedAt?: string | null;
   categories?: Array<Pick<CategoryItem, "id" | "documentId" | "name" | "slug">>;
+  tags?: Array<Pick<TagItem, "id" | "documentId" | "name" | "slug">>;
   author?: Pick<UserItem, "id" | "username" | "email"> | null;
+  images?: MediaItem[];
   categoriesCount?: number;
   commentsCount?: number;
 };
@@ -40,7 +44,40 @@ export type PostInput = {
   excerpt?: string;
   content?: string;
   categories?: string[];
+  tags?: string[];
   author?: number | null;
+  images?: number[];
+};
+
+export type PageType = "home" | "footer" | string;
+
+export type PageItem = {
+  id: number;
+  documentId: string;
+  title: string;
+  slug: string;
+  type: PageType;
+  content?: string;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
+export type PageInput = {
+  title?: string;
+  slug?: string;
+  type?: PageType;
+  content?: string;
+};
+
+export type MediaItem = {
+  id: number;
+  documentId?: string;
+  url: string;
+  mime?: string | null;
+  alternativeText?: string | null;
+  name?: string;
+  width?: number | null;
+  height?: number | null;
 };
 
 export type CategoryItem = {
@@ -62,6 +99,25 @@ export type CategoryInput = {
   description?: string;
   sortOrder?: number;
   parent?: string | null;
+};
+
+export type TagItem = {
+  id: number;
+  documentId: string;
+  name: string;
+  slug: string;
+  description?: string;
+  aliases?: string[];
+  createdAt?: string;
+  updatedAt?: string;
+  publishedAt?: string | null;
+};
+
+export type TagInput = {
+  name?: string;
+  slug?: string;
+  description?: string;
+  aliases?: string[];
 };
 
 export type CommentTargetType = "post" | "page" | "product" | "hotel" | "tour" | "other";
@@ -99,6 +155,7 @@ export type UserItem = {
   email: string;
   blocked: boolean;
   confirmed: boolean;
+  isSeeded?: boolean;
   role?: RoleItem | null;
 };
 
@@ -230,9 +287,21 @@ export async function listPosts(
     "populate[categories][fields][1]": "documentId",
     "populate[categories][fields][2]": "name",
     "populate[categories][fields][3]": "slug",
+    "populate[tags][fields][0]": "id",
+    "populate[tags][fields][1]": "documentId",
+    "populate[tags][fields][2]": "name",
+    "populate[tags][fields][3]": "slug",
     "populate[author][fields][0]": "id",
     "populate[author][fields][1]": "username",
     "populate[author][fields][2]": "email",
+    "populate[images][fields][0]": "id",
+    "populate[images][fields][1]": "documentId",
+    "populate[images][fields][2]": "url",
+    "populate[images][fields][3]": "alternativeText",
+    "populate[images][fields][4]": "width",
+    "populate[images][fields][5]": "height",
+    "populate[images][fields][6]": "name",
+    "populate[images][fields][7]": "mime",
     "pagination[page]": String(page),
     "pagination[pageSize]": String(pageSize),
     ...(filters?.q?.trim() ? { q: filters.q.trim() } : {}),
@@ -249,12 +318,32 @@ export async function getPost(documentId: string) {
     "populate[categories][fields][1]": "documentId",
     "populate[categories][fields][2]": "name",
     "populate[categories][fields][3]": "slug",
+    "populate[tags][fields][0]": "id",
+    "populate[tags][fields][1]": "documentId",
+    "populate[tags][fields][2]": "name",
+    "populate[tags][fields][3]": "slug",
     "populate[author][fields][0]": "id",
     "populate[author][fields][1]": "username",
     "populate[author][fields][2]": "email",
+    "populate[images][fields][0]": "id",
+    "populate[images][fields][1]": "documentId",
+    "populate[images][fields][2]": "url",
+    "populate[images][fields][3]": "alternativeText",
+    "populate[images][fields][4]": "width",
+    "populate[images][fields][5]": "height",
+    "populate[images][fields][6]": "name",
+    "populate[images][fields][7]": "mime",
   });
   const payload = await request<ApiResponse<PostItem>>(`/api/management/posts/${documentId}?${query.toString()}`);
   return toItem<PostItem>(payload);
+}
+
+export async function uploadImages(files: File[]) {
+  if (files.length === 0) {
+    return [] as MediaItem[];
+  }
+
+  return uploadMediaFiles<MediaItem>(files.map((file) => nameGalleryFile(file)));
 }
 
 export async function createPost(input: PostInput) {
@@ -289,6 +378,42 @@ export async function unpublishPost(documentId: string) {
     method: "POST",
   });
   return toItem<PostItem>(payload);
+}
+
+export async function listPages(page = DEFAULT_PAGE, pageSize = DEFAULT_PAGE_SIZE, q = "") {
+  const query = new URLSearchParams({
+    sort: "updatedAt:desc",
+    "pagination[page]": String(page),
+    "pagination[pageSize]": String(pageSize),
+    ...(q.trim() ? { q: q.trim() } : {}),
+  });
+  const payload = await request(`/api/management/pages?${query.toString()}`);
+  return toPaginated<PageItem>(payload, page, pageSize);
+}
+
+export async function getPage(documentId: string) {
+  const payload = await request<ApiResponse<PageItem>>(`/api/management/pages/${documentId}`);
+  return toItem<PageItem>(payload);
+}
+
+export async function createPage(input: PageInput) {
+  const payload = await request<ApiResponse<PageItem>>("/api/management/pages", {
+    method: "POST",
+    body: JSON.stringify({ data: input }),
+  });
+  return toItem<PageItem>(payload);
+}
+
+export async function updatePage(documentId: string, input: PageInput) {
+  const payload = await request<ApiResponse<PageItem>>(`/api/management/pages/${documentId}`, {
+    method: "PUT",
+    body: JSON.stringify({ data: input }),
+  });
+  return toItem<PageItem>(payload);
+}
+
+export async function deletePage(documentId: string) {
+  await request(`/api/management/pages/${documentId}`, { method: "DELETE" });
 }
 
 export async function listCategories(page = DEFAULT_PAGE, pageSize = DEFAULT_PAGE_SIZE) {
@@ -380,6 +505,79 @@ export async function reorderCategory(
     method: "POST",
     body: JSON.stringify(body),
   });
+}
+
+export async function listTags(page = DEFAULT_PAGE, pageSize = DEFAULT_PAGE_SIZE, q = "") {
+  const query = new URLSearchParams({
+    sort: "updatedAt:desc",
+    "pagination[page]": String(page),
+    "pagination[pageSize]": String(pageSize),
+    ...(q.trim() ? { q: q.trim() } : {}),
+  });
+  const payload = await request(`/api/management/tags?${query.toString()}`);
+  return toPaginated<TagItem>(payload, page, pageSize);
+}
+
+export async function listAllTags() {
+  const pageSize = 100;
+  const first = await listTags(1, pageSize);
+  const all = [...first.data];
+
+  for (let page = 2; page <= first.pagination.pageCount; page += 1) {
+    const next = await listTags(page, pageSize);
+    all.push(...next.data);
+  }
+
+  return all;
+}
+
+export async function getTag(documentId: string) {
+  const payload = await request<ApiResponse<TagItem>>(`/api/management/tags/${documentId}`);
+  return toItem<TagItem>(payload);
+}
+
+export async function createTag(input: TagInput) {
+  const payload = await request<ApiResponse<TagItem>>("/api/management/tags", {
+    method: "POST",
+    body: JSON.stringify({ data: input }),
+  });
+  return toItem<TagItem>(payload);
+}
+
+export async function updateTag(documentId: string, input: TagInput) {
+  const payload = await request<ApiResponse<TagItem>>(`/api/management/tags/${documentId}`, {
+    method: "PUT",
+    body: JSON.stringify({ data: input }),
+  });
+  return toItem<TagItem>(payload);
+}
+
+export async function deleteTag(documentId: string) {
+  await request(`/api/management/tags/${documentId}`, { method: "DELETE" });
+}
+
+export async function publishTag(documentId: string) {
+  const payload = await request<ApiResponse<TagItem>>(`/api/management/tags/${documentId}/publish`, {
+    method: "POST",
+  });
+  return toItem<TagItem>(payload);
+}
+
+export async function unpublishTag(documentId: string) {
+  const payload = await request<ApiResponse<TagItem>>(`/api/management/tags/${documentId}/unpublish`, {
+    method: "POST",
+  });
+  return toItem<TagItem>(payload);
+}
+
+export async function mergeTags(sourceDocumentId: string, targetDocumentId: string) {
+  const payload = await request<ApiResponse<{ target: TagItem; mergedPostCount: number }>>(
+    `/api/management/tags/${sourceDocumentId}/merge/${targetDocumentId}`,
+    {
+      method: "POST",
+    },
+  );
+  return toItem<{ target: TagItem; mergedPostCount: number }>(payload);
 }
 
 export async function listComments(
@@ -475,10 +673,16 @@ export async function unpublishComment(documentId: string) {
   return toItem<CommentItem>(payload);
 }
 
-export async function listUsers(page = DEFAULT_PAGE, pageSize = DEFAULT_PAGE_SIZE, q = "") {
+export async function listUsers(
+  page = DEFAULT_PAGE,
+  pageSize = DEFAULT_PAGE_SIZE,
+  q = "",
+  isSeeded = false,
+) {
   const query = new URLSearchParams({
     page: String(page),
     pageSize: String(pageSize),
+    isSeeded: String(isSeeded),
     ...(q.trim() ? { q: q.trim() } : {}),
   });
   const payload = await request(`/api/management/users?${query.toString()}`);
@@ -532,8 +736,53 @@ export async function deleteUser(id: number) {
   await request(`/api/management/users/${id}`, { method: "DELETE" });
 }
 
+export async function seedUsers(count: number = 20) {
+  const payload = await request<
+    ApiResponse<{
+      createdCount: number;
+      startUsername: string | null;
+      endUsername: string | null;
+      defaultPasswordHint: string;
+    }>
+  >("/api/management/users/seed", {
+    method: "POST",
+    body: JSON.stringify({ count }),
+  });
+  return toItem(payload);
+}
+
+export async function getRandomSeedUser() {
+  const first = await listUsers(1, 1, "", true);
+  const total = first.pagination.total ?? 0;
+  if (total <= 0) {
+    return null;
+  }
+
+  const randomPage = Math.floor(Math.random() * total) + 1;
+  const result = await listUsers(randomPage, 1, "", true);
+  return result.data[0] ?? null;
+}
+
+export async function batchDeleteSeedUsers(ids: number[]) {
+  const payload = await request<
+    ApiResponse<{
+      requestedCount: number;
+      deletedCount: number;
+      skippedCount: number;
+    }>
+  >("/api/management/users/seed/batch-delete", {
+    method: "POST",
+    body: JSON.stringify({ ids }),
+  });
+  return toItem(payload);
+}
+
 export async function getAdminDashboard() {
   const payload = await request<ApiResponse<AdminDashboardData>>("/api/management/dashboard");
   return toItem<AdminDashboardData>(payload);
+}
+
+export async function triggerAutoEngage() {
+  return request<{ message: string }>("/api/management/cron/auto-engage", { method: "POST" });
 }
 

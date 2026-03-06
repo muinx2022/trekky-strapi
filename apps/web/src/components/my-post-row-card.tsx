@@ -8,6 +8,7 @@ type MyPostRow = Post & {
 export function MyPostRowCard({ post }: { post: MyPostRow }) {
   const isPublished = post.status === "published" || Boolean(post.publishedAt);
   const categories = post.categories ?? [];
+  const tags = post.tags ?? [];
 
   return (
     <div>
@@ -16,7 +17,7 @@ export function MyPostRowCard({ post }: { post: MyPostRow }) {
           {categories.slice(0, 3).map((category) => (
             <span
               key={category.documentId}
-              className="rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-medium text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"
+              className="rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-600"
             >
               {category.name}
             </span>
@@ -36,7 +37,7 @@ export function MyPostRowCard({ post }: { post: MyPostRow }) {
         {post.title}
       </Link>
 
-      <div className="mt-3">
+      <div className="mt-3 flex flex-wrap items-center gap-2">
         <span
           className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium ${
             isPublished
@@ -51,6 +52,15 @@ export function MyPostRowCard({ post }: { post: MyPostRow }) {
           />
           {isPublished ? "Đã xuất bản" : "Bản nháp"}
         </span>
+        {tags.map((tag) => (
+          <Link
+            key={tag.documentId}
+            href={`/t/${tag.slug}`}
+            className="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs text-gray-500 hover:bg-gray-200 hover:text-gray-700 transition-colors"
+          >
+            #{tag.name}
+          </Link>
+        ))}
       </div>
     </div>
   );

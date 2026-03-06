@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { GripVertical, Pencil, Plus, Trash2 } from "lucide-react";
@@ -68,7 +68,7 @@ function CategoryRow({
     <div className="space-y-1">
       <div
         ref={setDropRef}
-        className={`grid grid-cols-[20px_minmax(240px,1.8fr)_minmax(140px,1fr)_minmax(140px,1fr)_110px_110px_120px] items-start gap-3 rounded-md border p-3 text-sm transition-colors ${
+        className={`group grid grid-cols-[20px_minmax(240px,1.8fr)_minmax(140px,1fr)_minmax(140px,1fr)_110px_110px_120px] items-start gap-3 rounded-md border p-3 text-sm transition-colors ${
           isBeingDragged ? "opacity-50 bg-muted/50" : isOver ? "bg-blue-50 dark:bg-blue-900/20" : "bg-background hover:bg-muted/50"
         }`}
         style={{ marginLeft: `${level * 20}px` }}
@@ -94,7 +94,7 @@ function CategoryRow({
         <div className="flex items-center gap-2">
           <button
             type="button"
-            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+            className={`relative inline-flex h-4 w-7 items-center rounded-full transition-colors ${
               item.publishedAt ? "bg-emerald-600" : "bg-muted-foreground/30"
             }`}
             onClick={() => onTogglePublished(item)}
@@ -102,8 +102,8 @@ function CategoryRow({
             title={item.publishedAt ? "Published" : "Draft"}
           >
             <span
-              className={`inline-block h-5 w-5 transform rounded-full bg-background shadow transition-transform ${
-                item.publishedAt ? "translate-x-5" : "translate-x-0.5"
+              className={`inline-block h-3 w-3 transform rounded-full bg-background shadow transition-transform ${
+                item.publishedAt ? "translate-x-[14px]" : "translate-x-0.5"
               }`}
             />
             <span className="sr-only">{item.publishedAt ? "Published" : "Draft"}</span>
@@ -111,9 +111,9 @@ function CategoryRow({
           <span className="text-xs text-muted-foreground">{item.publishedAt ? "Published" : "Draft"}</span>
         </div>
         <div className="text-muted-foreground">{formatDate(item.updatedAt)}</div>
-        <div className="flex justify-end gap-2">
-          <IconAction label="Edit category" icon={<Pencil />} href={`/categories/${item.documentId}/edit`} variant="outline" />
-          <IconAction label="Delete category" icon={<Trash2 />} onClick={() => onDelete(item)} variant="destructive" />
+        <div className="flex justify-end gap-1.5 opacity-100 pointer-events-auto transition-opacity duration-150 md:opacity-0 md:pointer-events-none md:group-hover:opacity-100 md:group-hover:pointer-events-auto md:group-focus-within:opacity-100 md:group-focus-within:pointer-events-auto">
+          <IconAction label="Edit category" icon={<Pencil />} href={`/categories/${item.documentId}/edit`} variant="outline" size="icon-xs" />
+          <IconAction label="Delete category" icon={<Trash2 />} onClick={() => onDelete(item)} variant="destructive" size="icon-xs" />
         </div>
       </div>
 
@@ -307,7 +307,7 @@ export function CategoriesManager() {
           return (
             <div key={item.documentId} className="space-y-1">
               <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-600">
-                ⚠️ Circular reference: {item.name}
+                âš ï¸ Circular reference: {item.name}
               </div>
             </div>
           );
@@ -380,3 +380,5 @@ export function CategoriesManager() {
     </Card>
   );
 }
+
+

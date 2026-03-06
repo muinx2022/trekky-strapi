@@ -34,6 +34,8 @@ type AuthContextType = {
   jwt: string | null;
   /** Returns null on success, error message string on failure */
   login: (email: string, password: string, rememberMe: boolean) => Promise<string | null>;
+  /** Login with a JWT token (e.g. from OAuth callback). Returns null on success, error string on failure */
+  loginWithToken: (jwt: string) => Promise<string | null>;
   updateProfile: (input: { bio: string; avatarFile: File | null }) => Promise<string | null>;
   logout: () => void;
   isLoginModalOpen: boolean;
@@ -90,7 +92,11 @@ function toAbsoluteMediaUrl(url?: string | null, version?: number | null) {
 
 async function fetchCurrentUser(jwt: string): Promise<StrapiMe | null> {
   try {
-    const meRes = await fetch(`${API_URL}/api/users/me?populate[avatar][fields][0]=url`, {
+    // Use /api/me-proxy to avoid CORS issues when calling from the browser
+    const url = typeof window !== "undefined"
+      ? "/api/me-proxy"
+      : `${API_URL}/api/users/me?populate[avatar][fields][0]=url`;
+    const meRes = await fetch(url, {
       headers: {
         Authorization: `Bearer ${jwt}`,
       },
@@ -198,6 +204,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     []
   );
 
+  const loginWithToken = useCallback(async (jwt: string): Promise<string | null> => {
+    const me = await fetchCurrentUser(jwt);
+    if (!me) return "Không thể lấy thông tin tài khoản.";
+    const avatar = getMediaFromPayload(me.avatar);
+    const u: User = {
+      id: me.id,
+      email: me.email,
+      username: me.username,
+      bio: me.bio ?? null,
+      avatarId: avatar?.id ?? null,
+      avatarVersion: avatar?.id ?? 0,
+      avatarUrl: toAbsoluteMediaUrl(avatar?.url, avatar?.id ?? null),
+      jwt,
+    };
+    setUser(u);
+    localStorage.setItem("auth_user", JSON.stringify(u));
+    setIsLoginModalOpen(false);
+    return null;
+  }, []);
+
   const updateProfile = useCallback(
     async (input: { bio: string; avatarFile: File | null }): Promise<string | null> => {
       if (!user?.jwt) {
@@ -284,6 +310,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isLoggedIn: !!user,
         jwt: user?.jwt ?? null,
         login,
+        loginWithToken,
         updateProfile,
         logout,
         isLoginModalOpen,

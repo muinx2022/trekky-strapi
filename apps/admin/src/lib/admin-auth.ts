@@ -8,7 +8,7 @@ export type AdminSession = {
   };
 };
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:1337";
+const API_URL = "";
 const SESSION_KEY = "starter_admin_session";
 const REMEMBERED_IDENTIFIER_KEY = "starter_admin_identifier";
 

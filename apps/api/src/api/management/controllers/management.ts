@@ -79,6 +79,48 @@ export default {
     ctx.body = { data };
   },
 
+  async listPages(ctx: any) {
+    const service = strapi.service('api::page.page') as any;
+    ctx.body = await service.listForAdmin(ctx.query);
+  },
+
+  async findPage(ctx: any) {
+    const service = strapi.service('api::page.page') as any;
+    const documentId = readDocumentId(ctx);
+    if (!documentId) return;
+
+    const data = await service.findOneForAdmin(documentId, ctx.query);
+    if (!data) {
+      return ctx.notFound('Page not found');
+    }
+
+    ctx.body = { data };
+  },
+
+  async createPage(ctx: any) {
+    const service = strapi.service('api::page.page') as any;
+    const data = await service.createForAdmin(ctx.request.body?.data);
+    ctx.body = { data };
+  },
+
+  async updatePage(ctx: any) {
+    const service = strapi.service('api::page.page') as any;
+    const documentId = readDocumentId(ctx);
+    if (!documentId) return;
+
+    const data = await service.updateForAdmin(documentId, ctx.request.body?.data);
+    ctx.body = { data };
+  },
+
+  async deletePage(ctx: any) {
+    const service = strapi.service('api::page.page') as any;
+    const documentId = readDocumentId(ctx);
+    if (!documentId) return;
+
+    await service.deleteForAdmin(documentId);
+    ctx.body = { data: { documentId } };
+  },
+
   async listCategories(ctx: any) {
     const service = strapi.service('api::category.category') as any;
     ctx.body = await service.listForAdmin(ctx.query);
@@ -179,6 +221,90 @@ export default {
     }
   },
 
+  async listTags(ctx: any) {
+    const service = strapi.service('api::tag.tag') as any;
+    ctx.body = await service.listForAdmin(ctx.query);
+  },
+
+  async findTag(ctx: any) {
+    const service = strapi.service('api::tag.tag') as any;
+    const documentId = readDocumentId(ctx);
+    if (!documentId) return;
+
+    const data = await service.findOneForAdmin(documentId, ctx.query);
+    if (!data) {
+      return ctx.notFound('Tag not found');
+    }
+
+    ctx.body = { data };
+  },
+
+  async createTag(ctx: any) {
+    const service = strapi.service('api::tag.tag') as any;
+    const data = await service.createForAdmin(ctx.request.body?.data);
+    ctx.body = { data };
+  },
+
+  async updateTag(ctx: any) {
+    const service = strapi.service('api::tag.tag') as any;
+    const documentId = readDocumentId(ctx);
+    if (!documentId) return;
+
+    const data = await service.updateForAdmin(documentId, ctx.request.body?.data);
+    ctx.body = { data };
+  },
+
+  async deleteTag(ctx: any) {
+    const service = strapi.service('api::tag.tag') as any;
+    const documentId = readDocumentId(ctx);
+    if (!documentId) return;
+
+    await service.deleteForAdmin(documentId);
+    ctx.body = { data: { documentId } };
+  },
+
+  async publishTag(ctx: any) {
+    const service = strapi.service('api::tag.tag') as any;
+    const documentId = readDocumentId(ctx);
+    if (!documentId) return;
+
+    const data = await service.publishForAdmin(documentId);
+    ctx.body = { data };
+  },
+
+  async unpublishTag(ctx: any) {
+    const service = strapi.service('api::tag.tag') as any;
+    const documentId = readDocumentId(ctx);
+    if (!documentId) return;
+
+    const data = await service.unpublishForAdmin(documentId);
+    ctx.body = { data };
+  },
+
+  async mergeTags(ctx: any) {
+    const service = strapi.service('api::tag.tag') as any;
+    const sourceDocumentId = String(ctx.params?.sourceDocumentId ?? '').trim();
+    const targetDocumentId = String(ctx.params?.targetDocumentId ?? '').trim();
+
+    if (!sourceDocumentId || !targetDocumentId) {
+      return ctx.badRequest('sourceDocumentId and targetDocumentId are required');
+    }
+
+    try {
+      const data = await service.mergeForAdmin(sourceDocumentId, targetDocumentId);
+      ctx.body = { data };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to merge tags';
+      if (message === 'Tag not found') {
+        return ctx.notFound(message);
+      }
+      if (message === 'Cannot merge a tag into itself') {
+        return ctx.badRequest(message);
+      }
+      throw error;
+    }
+  },
+
   async listComments(ctx: any) {
     const service = strapi.service('api::comment.comment') as any;
     ctx.body = await service.listForAdmin(ctx.query);
@@ -243,9 +369,10 @@ export default {
     const page = Math.max(1, Number(ctx.query?.page ?? 1) || 1);
     const pageSize = Math.min(100, Math.max(1, Number(ctx.query?.pageSize ?? 10) || 10));
     const q = String(ctx.query?.q ?? '').trim();
+    const isSeeded = String(ctx.query?.isSeeded ?? 'false').toLowerCase() === 'true';
 
     const service = strapi.service('api::admin-user.admin-user') as any;
-    ctx.body = await service.list(page, pageSize, q);
+    ctx.body = await service.list(page, pageSize, q, isSeeded);
   },
 
   async findUser(ctx: any) {
@@ -301,9 +428,38 @@ export default {
     ctx.body = { data };
   },
 
+  async seedUsers(ctx: any) {
+    const rawCount = ctx.request.body?.count;
+    const resolved = rawCount === undefined || rawCount === null || rawCount === '' ? 20 : Number(rawCount);
+    const count = Math.trunc(resolved);
+
+    if (!Number.isFinite(count) || count < 1 || count > 500) {
+      return ctx.badRequest('count must be an integer between 1 and 500');
+    }
+
+    const service = strapi.service('api::admin-user.admin-user') as any;
+    const data = await service.seedAuthenticatedUsers(count);
+    ctx.body = { data };
+  },
+
+  async batchDeleteSeedUsers(ctx: any) {
+    const rawIds = Array.isArray(ctx.request.body?.ids) ? ctx.request.body.ids : [];
+    const ids = rawIds.map((value: unknown) => Number(value)).filter((value: number) => Number.isFinite(value));
+
+    const service = strapi.service('api::admin-user.admin-user') as any;
+    const data = await service.batchDeleteSeedUsers(ids);
+    ctx.body = { data };
+  },
+
   async dashboard(ctx: any) {
     const service = strapi.service('api::admin-dashboard.admin-dashboard') as any;
     const data = await service.overview();
     ctx.body = { data };
+  },
+
+  async triggerAutoEngage(ctx: any) {
+    const { autoEngage } = await import('../../../cron/auto-engage');
+    await autoEngage(strapi);
+    ctx.body = { message: 'autoEngage triggered successfully' };
   },
 };

@@ -7,7 +7,38 @@ export default factories.createCoreController('api::post.post', ({ strapi }) => 
       ctx.query = { ...ctx.query, status: 'published' };
     }
     const { data, meta } = await super.find(ctx);
-    ctx.body = { data, meta };
+
+    // Enrich with author — Strapi sanitizes plugin::users-permissions.user for public requests.
+    const posts = Array.isArray(data) ? (data as Array<Record<string, unknown>>) : [];
+    if (posts.length > 0) {
+      const docIds = posts.map((p) => p.documentId as string).filter(Boolean);
+      try {
+        const internal = await (strapi.documents('api::post.post') as any).findMany({
+          filters: { documentId: { $in: docIds } },
+          populate: {
+            author: {
+              fields: ['id', 'username'],
+              populate: {
+                avatar: { fields: ['url'] },
+              },
+            },
+          },
+          status: isAuthenticated ? undefined : 'published',
+          pagination: { page: 1, pageSize: docIds.length },
+        });
+        const authorMap = new Map(
+          (internal ?? []).map((p: any) => [p.documentId, p.author ?? null])
+        );
+        ctx.body = {
+          data: posts.map((p) => ({ ...p, author: authorMap.get(p.documentId as string) ?? null })),
+          meta,
+        };
+      } catch {
+        ctx.body = { data, meta };
+      }
+    } else {
+      ctx.body = { data, meta };
+    }
   },
 
   async findOne(ctx) {
@@ -30,8 +61,8 @@ export default factories.createCoreController('api::post.post', ({ strapi }) => 
       return ctx.unauthorized('User not authenticated');
     }
 
-    const { title, slug, content, categories } = ctx.request.body?.data || {};
-    
+    const { title, slug, content, categories, tags, images } = ctx.request.body?.data || {};
+
     if (!title || !content) {
       return ctx.badRequest('Title and content are required');
     }
@@ -44,8 +75,10 @@ export default factories.createCoreController('api::post.post', ({ strapi }) => 
           content,
           author: userId,
           categories: categories || [],
+          tags: tags || [],
+          images: images || [],
         },
-        status: 'draft',
+        status: 'published',
       });
 
       ctx.body = { data: post };
@@ -77,16 +110,47 @@ export default factories.createCoreController('api::post.post', ({ strapi }) => 
         return ctx.forbidden('You can only update your own posts');
       }
 
-      const { title, content, categories } = ctx.request.body?.data || {};
+      // Check if a published version exists so we can re-publish after update.
+      let wasPublished = false;
+      try {
+        const pub = await strapi.documents('api::post.post').findOne({
+          documentId,
+          status: 'published',
+        });
+        wasPublished = !!pub;
+      } catch {
+        wasPublished = false;
+      }
+
+      const { title, content, categories, tags, images } = ctx.request.body?.data || {};
 
       const updated = await strapi.documents('api::post.post').update({
         documentId,
         data: {
           ...(title && { title }),
           ...(content && { content }),
-          ...(categories && { categories }),
+          ...(categories !== undefined && { categories }),
+          ...(tags !== undefined && { tags: tags || [] }),
+          ...(images !== undefined && { images }),
         },
       });
+
+      // If post was published, sync changes to the published version immediately.
+      if (wasPublished) {
+        try {
+          const docsApi = strapi.documents('api::post.post') as any;
+          if (typeof docsApi.publish === 'function') {
+            await docsApi.publish({ documentId });
+          } else if (existing.id) {
+            await strapi.entityService.update('api::post.post', existing.id as number, {
+              data: { publishedAt: new Date().toISOString() } as any,
+            });
+          }
+          console.log(`[post.userUpdate] Re-published document ${documentId}`);
+        } catch (pubError) {
+          console.error('[post.userUpdate] Re-publish failed:', pubError);
+        }
+      }
 
       ctx.body = { data: updated };
     } catch (error) {
@@ -106,8 +170,10 @@ export default factories.createCoreController('api::post.post', ({ strapi }) => 
     const status = ctx.query.status === 'published' ? 'published' : 'draft';
 
     try {
+      const postDocuments = strapi.documents('api::post.post') as any;
+
       const [posts, total] = await Promise.all([
-        strapi.documents('api::post.post').findMany({
+        postDocuments.findMany({
           filters: {
             author: {
               id: userId,
@@ -115,10 +181,10 @@ export default factories.createCoreController('api::post.post', ({ strapi }) => 
           },
           status,
           sort: 'updatedAt:desc',
-          populate: ['categories'],
+          populate: ['categories', 'tags', 'images'],
           pagination: { page, pageSize },
         }),
-        strapi.documents('api::post.post').count({
+        postDocuments.count({
           filters: {
             author: {
               id: userId,
@@ -151,6 +217,62 @@ export default factories.createCoreController('api::post.post', ({ strapi }) => 
             total: 0,
           },
         },
+      };
+    }
+  },
+
+  async byUsername(ctx) {
+    const { username } = ctx.params;
+    const page = Math.max(1, parseInt(ctx.query.page as string || '1', 10));
+    const pageSize = Math.max(1, Math.min(100, parseInt(ctx.query.pageSize as string || '10', 10)));
+
+    if (!username) {
+      return ctx.badRequest('Username is required');
+    }
+
+    try {
+      const postsApi = strapi.documents('api::post.post') as any;
+
+      const [posts, total] = await Promise.all([
+        postsApi.findMany({
+          filters: { author: { username: { $eq: username } } },
+          status: 'published',
+          sort: 'createdAt:desc',
+          populate: {
+            categories: { fields: ['name', 'slug'] },
+            tags: { fields: ['name', 'slug'] },
+            images: { fields: ['url', 'alternativeText'] },
+            author: {
+              fields: ['id', 'username'],
+              populate: {
+                avatar: { fields: ['url'] },
+              },
+            },
+          },
+          pagination: { page, pageSize },
+        }),
+        postsApi.count({
+          filters: { author: { username: { $eq: username } } },
+          status: 'published',
+        }),
+      ]);
+
+      ctx.body = {
+        data: posts || [],
+        meta: {
+          pagination: {
+            page,
+            pageSize,
+            pageCount: Math.max(1, Math.ceil((total || 0) / pageSize)),
+            total: total || 0,
+          },
+        },
+      };
+    } catch (error) {
+      console.error('[post.byUsername] error:', error);
+      ctx.body = {
+        data: [],
+        meta: { pagination: { page: 1, pageSize, pageCount: 1, total: 0 } },
       };
     }
   },

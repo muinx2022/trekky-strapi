@@ -133,8 +133,8 @@ export default function EditProfilePage() {
   return (
     <div className="space-y-6">
       <header>
-        <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">Edit Profile</h1>
-        <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">Chỉ được cập nhật ảnh đại diện và bio.</p>
+        <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">Sửa thông tin cá nhân</h1>
+        <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">Cập nhật ảnh đại diện và giới thiệu.</p>
       </header>
 
       <form onSubmit={onSubmit} className="space-y-4 rounded-xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-950">

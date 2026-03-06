@@ -161,7 +161,7 @@ export default function MyPostsPage() {
         </div>
         <Link
           href="/my-posts/new"
-          className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700"
+          className="inline-flex items-center gap-2 rounded-full bg-gray-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-gray-600"
         >
           <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -197,7 +197,7 @@ export default function MyPostsPage() {
               </button>
               <button
                 type="button"
-                className="rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700"
+                className="rounded-full bg-gray-500 px-3 py-2 text-sm font-medium text-white hover:bg-gray-600"
                 onClick={async () => {
                   const post = pendingPublishPost;
                   setPendingPublishPost(null);
@@ -234,7 +234,7 @@ export default function MyPostsPage() {
           <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-500">Bắt đầu bằng cách tạo bài viết đầu tiên của bạn</p>
           <Link
             href="/my-posts/new"
-            className="mt-4 inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700"
+            className="mt-4 inline-flex items-center gap-2 rounded-full bg-gray-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-gray-600"
           >
             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -274,7 +274,7 @@ export default function MyPostsPage() {
                     </button>
                     <Link
                       href={`/my-posts/${post.documentId}/edit`}
-                      className="group relative inline-flex h-9 w-9 items-center justify-center rounded-md bg-blue-600 text-white transition-colors hover:bg-blue-700"
+                      className="group relative inline-flex h-9 w-9 items-center justify-center rounded-full bg-gray-500 text-white transition-colors hover:bg-gray-600"
                       title="Chỉnh sửa"
                       aria-label="Chỉnh sửa"
                     >

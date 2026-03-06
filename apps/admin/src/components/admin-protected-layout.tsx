@@ -2,14 +2,17 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { PropsWithChildren, useEffect, useMemo, useSyncExternalStore } from "react";
+import { PropsWithChildren, useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import {
   LayoutDashboard,
   FileText,
+  Files,
   Tag,
+  Hash,
   MessageSquare,
   Users,
   LogOut,
+  Menu,
   ChevronRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -19,7 +22,9 @@ import { clearSession, type AdminSession } from "@/lib/admin-auth";
 const menuItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/posts", label: "Posts", icon: FileText },
+  { href: "/pages", label: "Pages", icon: Files },
   { href: "/categories", label: "Categories", icon: Tag },
+  { href: "/tags", label: "Tags", icon: Hash },
   { href: "/comments", label: "Comments", icon: MessageSquare },
   { href: "/users", label: "Users", icon: Users },
 ];
@@ -90,6 +95,7 @@ export function AdminProtectedLayout({ children }: PropsWithChildren) {
   }, [router, session]);
 
   const activePath = useMemo(() => pathname ?? "", [pathname]);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   if (session === undefined || session === null) return null;
 
@@ -102,14 +108,27 @@ export function AdminProtectedLayout({ children }: PropsWithChildren) {
 
   return (
     <div className="flex min-h-screen bg-muted/30">
+      {mobileMenuOpen && (
+        <button
+          type="button"
+          className="fixed inset-0 z-40 bg-black/40 md:hidden"
+          onClick={() => setMobileMenuOpen(false)}
+          aria-label="Close sidebar"
+        />
+      )}
+
       {/* Sidebar */}
-      <aside className="fixed inset-y-0 left-0 z-40 flex w-56 flex-col border-r bg-background">
+      <aside
+        className={`fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r bg-background transition-transform duration-200 md:z-40 md:w-56 md:translate-x-0 ${
+          mobileMenuOpen ? "translate-x-0" : "-translate-x-full"
+        }`}
+      >
         {/* Brand */}
         <div className="flex h-14 shrink-0 items-center gap-2.5 border-b px-4">
           <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary shadow-sm">
             <span className="text-xs font-bold text-primary-foreground">A</span>
           </div>
-          <span className="text-sm font-semibold tracking-tight">Starter Admin</span>
+          <span className="text-sm font-semibold tracking-tight">Trekky Administration</span>
         </div>
 
         {/* Nav */}
@@ -126,6 +145,7 @@ export function AdminProtectedLayout({ children }: PropsWithChildren) {
                 <Link
                   key={item.href}
                   href={item.href}
+                  onClick={() => setMobileMenuOpen(false)}
                   className={`group flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
                     isActive
                       ? "bg-primary/10 text-primary"
@@ -164,10 +184,22 @@ export function AdminProtectedLayout({ children }: PropsWithChildren) {
       </aside>
 
       {/* Main */}
-      <div className="flex min-w-0 flex-1 flex-col pl-56">
+      <div className="flex min-w-0 flex-1 flex-col md:pl-56">
         {/* Topbar */}
-        <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center justify-end border-b bg-background/80 px-6 backdrop-blur-sm">
-          <div className="flex items-center gap-1.5">
+        <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center justify-between border-b bg-background/80 px-3 backdrop-blur-sm md:px-6">
+          <div className="flex items-center gap-2 md:hidden">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setMobileMenuOpen(true)}
+              aria-label="Open sidebar"
+            >
+              <Menu className="h-5 w-5" />
+            </Button>
+            <span className="text-sm font-semibold tracking-tight">Admin</span>
+          </div>
+
+          <div className="ml-auto flex items-center gap-1.5">
             <ThemeToggle />
             <Button
               variant="ghost"
@@ -182,7 +214,7 @@ export function AdminProtectedLayout({ children }: PropsWithChildren) {
         </header>
 
         {/* Content */}
-        <main className="flex-1 p-6">{children}</main>
+        <main className="flex-1 p-3 md:p-6">{children}</main>
       </div>
     </div>
   );
