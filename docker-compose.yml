@@ -1,16 +1,24 @@
 services:
-  # Cloudflare Tunnel (nếu dùng tunnel riêng cho trekky)
-  cloudflared:
-    image: cloudflare/cloudflared:latest
-    container_name: trekky-cloudflared
-    restart: always
+  deploy-listener:
+    build:
+      context: ./deploy/vps
+      dockerfile: Dockerfile
+    container_name: trekky-deploy-listener
+    restart: unless-stopped
     environment:
-      - TUNNEL_TOKEN=${TUNNEL_TOKEN}
-    command: tunnel --no-autoupdate run
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
+      - DEPLOY_HOST=0.0.0.0
+      - DEPLOY_PORT=8787
+      - DEPLOY_WEBHOOK_TOKEN=${DEPLOY_WEBHOOK_TOKEN}
+      - DEPLOY_SCRIPT=/opt/trekky-deploy/deploy.sh
+      - DEPLOY_COMPOSE_DIR=/workspace
+      - DEPLOY_COMPOSE_FILE=docker-compose.yml
+      - COMPOSE_PROJECT_NAME=trekky-strapi
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./:/workspace
     networks:
       - trekky-network
+      - gikky-network
 
   # Strapi API
   api:

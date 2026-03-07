@@ -67,3 +67,21 @@ pnpm dev:admin
   - `category`: `find`, `findOne`
   - `comment`: `find`, `findOne` (and `create` if you add submit form)
 - After creating content, web is available at `http://localhost:3000` and admin at `http://localhost:3001` if run concurrently.
+
+## Production CI/CD
+
+- GitHub Actions workflow: `.github/workflows/deploy.yml`
+- Trigger: push to `main` or manual dispatch
+- Behavior:
+  - detect changed app services (`api`, `web`, `admin`)
+  - build and push changed Docker images to Docker Hub under `muinx`
+  - call a deploy webhook after all image pushes succeed
+- Runtime on VPS:
+  - `deploy-listener` runs as a Docker service in the production compose stack
+  - the existing Cloudflare tunnel should route a public hostname to `http://trekky-deploy-listener:8787`
+- Required GitHub secrets:
+  - `DOCKERHUB_USERNAME`
+  - `DOCKERHUB_TOKEN`
+  - `DEPLOY_WEBHOOK_URL`
+  - `DEPLOY_WEBHOOK_TOKEN`
+- VPS listener setup files live in `deploy/vps`

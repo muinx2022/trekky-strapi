@@ -1,0 +1,153 @@
+name: Build And Deploy Production
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false
+
+jobs:
+  detect_changes:
+    name: Detect changed services
+    runs-on: ubuntu-latest
+    outputs:
+      has_changes: ${{ steps.detect.outputs.has_changes }}
+      matrix: ${{ steps.detect.outputs.matrix }}
+      services_json: ${{ steps.detect.outputs.services_json }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect services
+        id: detect
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          ZERO_SHA="0000000000000000000000000000000000000000"
+          BASE_SHA="${{ github.event.before }}"
+
+          if [[ -z "$BASE_SHA" || "$BASE_SHA" == "$ZERO_SHA" ]] || ! git cat-file -e "$BASE_SHA^{commit}" 2>/dev/null; then
+            BASE_SHA="$(git rev-parse HEAD^ 2>/dev/null || true)"
+          fi
+
+          if [[ -n "$BASE_SHA" ]]; then
+            CHANGED_FILES="$(git diff --name-only "$BASE_SHA" "$GITHUB_SHA")"
+          else
+            CHANGED_FILES="$(git ls-files)"
+          fi
+
+          echo "Changed files:"
+          printf '%s\n' "$CHANGED_FILES"
+
+          shared_changed=false
+          if printf '%s\n' "$CHANGED_FILES" | grep -Eq '^(package\.json|pnpm-lock\.yaml|pnpm-workspace\.yaml|turbo\.json|\.dockerignore)$'; then
+            shared_changed=true
+          fi
+
+          declare -a services=()
+          declare -a matrix_entries=()
+
+          add_service() {
+            local service="$1"
+            local image="$2"
+            local dockerfile="$3"
+
+            services+=("$service")
+            matrix_entries+=("{\"service\":\"$service\",\"image\":\"$image\",\"dockerfile\":\"$dockerfile\"}")
+          }
+
+          if [[ "$shared_changed" == "true" ]] || printf '%s\n' "$CHANGED_FILES" | grep -Eq '^(apps/api/|apps/api/Dockerfile)'; then
+            add_service "api" "muinx/trekky-api" "apps/api/Dockerfile"
+          fi
+
+          if [[ "$shared_changed" == "true" ]] || printf '%s\n' "$CHANGED_FILES" | grep -Eq '^(apps/web/|apps/web/Dockerfile)'; then
+            add_service "web" "muinx/trekky-web" "apps/web/Dockerfile"
+          fi
+
+          if [[ "$shared_changed" == "true" ]] || printf '%s\n' "$CHANGED_FILES" | grep -Eq '^(apps/admin/|apps/admin/Dockerfile)'; then
+            add_service "admin" "muinx/trekky-admin" "apps/admin/Dockerfile"
+          fi
+
+          if [[ "${#services[@]}" -eq 0 ]]; then
+            echo "has_changes=false" >> "$GITHUB_OUTPUT"
+            echo "matrix=[]" >> "$GITHUB_OUTPUT"
+            echo "services_json=[]" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          services_json="$(printf '%s\n' "${services[@]}" | jq -R . | jq -cs .)"
+          matrix="$(printf '%s\n' "${matrix_entries[@]}" | jq -cs '.')"
+
+          echo "has_changes=true" >> "$GITHUB_OUTPUT"
+          echo "services_json=$services_json" >> "$GITHUB_OUTPUT"
+          echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
+
+  build_and_push:
+    name: Build and push changed images
+    runs-on: ubuntu-latest
+    needs: detect_changes
+    if: needs.detect_changes.outputs.has_changes == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJson(needs.detect_changes.outputs.matrix) }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push ${{ matrix.service }}
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          push: true
+          provenance: false
+          tags: ${{ matrix.image }}:latest
+          cache-from: type=gha,scope=${{ matrix.service }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.service }}
+
+  notify_vps:
+    name: Notify VPS deploy listener
+    runs-on: ubuntu-latest
+    needs:
+      - detect_changes
+      - build_and_push
+    if: needs.detect_changes.outputs.has_changes == 'true' && needs.build_and_push.result == 'success'
+    steps:
+      - name: Call deploy webhook
+        shell: bash
+        env:
+          DEPLOY_WEBHOOK_URL: ${{ secrets.DEPLOY_WEBHOOK_URL }}
+          DEPLOY_WEBHOOK_TOKEN: ${{ secrets.DEPLOY_WEBHOOK_TOKEN }}
+          SERVICES_JSON: ${{ needs.detect_changes.outputs.services_json }}
+        run: |
+          set -euo pipefail
+
+          payload="$(jq -nc \
+            --arg ref "$GITHUB_REF" \
+            --arg sha "$GITHUB_SHA" \
+            --argjson services "$SERVICES_JSON" \
+            '{ref: $ref, sha: $sha, services: $services}')"
+
+          curl --fail --silent --show-error \
+            --request POST \
+            --url "$DEPLOY_WEBHOOK_URL" \
+            --header "content-type: application/json" \
+            --header "x-deploy-token: $DEPLOY_WEBHOOK_TOKEN" \
+            --data "$payload"

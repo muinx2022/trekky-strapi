@@ -1,0 +1,16 @@
+[Unit]
+Description=Trekky deploy webhook listener
+After=network.target docker.service
+Requires=docker.service
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/trekky-deploy
+EnvironmentFile=/etc/trekky-deploy.env
+ExecStart=/usr/bin/node /opt/trekky-deploy/webhook-listener.mjs
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
