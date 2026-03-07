@@ -207,12 +207,12 @@ export function PostsManager() {
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between gap-3">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <CardTitle className="text-xl font-semibold tracking-tight">Posts</CardTitle>
               <p className="text-sm text-muted-foreground">Manage posts and publication status</p>
             </div>
-            <Button asChild variant="outline" size="sm">
+            <Button asChild variant="outline" size="sm" className="w-full sm:w-auto">
               <Link href="/posts/new" className="inline-flex items-center gap-1.5">
                 <Plus className="h-4 w-4" />
                 Create Post
@@ -248,16 +248,97 @@ export function PostsManager() {
               <option value="draft">Draft</option>
             </select>
           </div>
-          <div className="mb-3 flex gap-2">
-            <Button type="button" size="sm" onClick={onApplyFilters}>
+          <div className="mb-4 grid grid-cols-2 gap-2 sm:flex">
+            <Button type="button" size="sm" onClick={onApplyFilters} className="w-full sm:w-auto">
               Apply
             </Button>
-            <Button type="button" size="sm" variant="outline" onClick={onResetFilters}>
+            <Button type="button" size="sm" variant="outline" onClick={onResetFilters} className="w-full sm:w-auto">
               Reset
             </Button>
           </div>
           {loading && <p className="text-sm text-muted-foreground">Loading...</p>}
           {error && <p className="text-sm text-destructive">{error}</p>}
+          <div className="space-y-3 md:hidden">
+            {rows.map((item) => (
+              <div key={item.documentId} className="rounded-xl border bg-card p-4 shadow-sm">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-xs uppercase tracking-wide text-muted-foreground">Post #{item.id}</p>
+                    <p className="mt-1 line-clamp-2 font-semibold">{item.title}</p>
+                    <p className="mt-1 break-all text-xs text-muted-foreground">{item.slug}</p>
+                  </div>
+                  <button
+                    type="button"
+                    className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors ${
+                      item.publishedAt ? "bg-emerald-600" : "bg-muted-foreground/30"
+                    }`}
+                    onClick={() => onTogglePublished(item)}
+                    disabled={togglingDocumentId === item.documentId}
+                    title={item.publishedAt ? "Published" : "Draft"}
+                  >
+                    <span
+                      className={`inline-block h-4 w-4 transform rounded-full bg-background shadow transition-transform ${
+                        item.publishedAt ? "translate-x-4" : "translate-x-0.5"
+                      }`}
+                    />
+                    <span className="sr-only">{item.publishedAt ? "Published" : "Draft"}</span>
+                  </button>
+                </div>
+
+                <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
+                  <div>
+                    <p className="text-xs text-muted-foreground">Author</p>
+                    <p className="mt-1">{item.author?.username ?? "none"}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Comments</p>
+                    <p className="mt-1">{item.commentsCount ?? 0}</p>
+                  </div>
+                  <div className="col-span-2">
+                    <p className="text-xs text-muted-foreground">Category</p>
+                    <p className="mt-1 line-clamp-2">{(item.categories ?? []).map((cat) => cat.name).join(", ") || "-"}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Created</p>
+                    <p className="mt-1">{formatDate(item.createdAt)}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Updated</p>
+                    <p className="mt-1">{formatDate(item.updatedAt)}</p>
+                  </div>
+                </div>
+
+                <div className="mt-4 flex items-center justify-between gap-3">
+                  <p className="text-sm font-medium">{item.publishedAt ? "Published" : "Draft"}</p>
+                  <div className="grid shrink-0 grid-cols-3 gap-2">
+                    <Button asChild variant="outline" size="sm" className="px-2">
+                      <Link href={`/posts/${item.documentId}/view`} className="inline-flex items-center gap-1.5">
+                        <Eye className="h-4 w-4" />
+                        <span className="sr-only">View</span>
+                      </Link>
+                    </Button>
+                    <Button asChild variant="outline" size="sm" className="px-2">
+                      <Link href={`/posts/${item.documentId}/edit`} className="inline-flex items-center gap-1.5">
+                        <Pencil className="h-4 w-4" />
+                        <span className="sr-only">Edit</span>
+                      </Link>
+                    </Button>
+                    <Button type="button" variant="destructive" size="sm" onClick={() => onDelete(item)} className="px-2">
+                      <Trash2 className="h-4 w-4" />
+                      <span className="sr-only">Delete</span>
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            ))}
+            {rows.length === 0 && !loading && (
+              <div className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">
+                No posts yet.
+              </div>
+            )}
+          </div>
+
+          <div className="hidden md:block">
           <Table className="[&_td]:align-top [&_td]:break-words [&_td]:whitespace-normal">
               <TableHeader>
                 <TableRow>
@@ -345,6 +426,7 @@ export function PostsManager() {
               )}
             </TableBody>
           </Table>
+          </div>
           <PaginationControls
             page={pagination.page}
             pageCount={pagination.pageCount}

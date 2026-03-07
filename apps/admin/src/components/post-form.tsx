@@ -9,6 +9,7 @@ import { toast } from "@/components/ui/app-toast";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { MultiSelectBox } from "@/components/multi-select-box";
 import { PostAuthorPicker } from "@/components/post-author-picker";
 import { RichTextEditor } from "@/components/rich-text-editor";
@@ -382,13 +383,22 @@ export function PostForm({ mode, documentId }: PostFormProps) {
 
   const visibleExistingMedia = form.images.filter((item) => !removedMediaIds.has(item.id));
   const totalMediaCount = visibleExistingMedia.length + newMediaFiles.length;
+  const submitLabel = processingGallery
+    ? "Processing media..."
+    : uploadingMedia
+      ? "Uploading media..."
+      : saving
+        ? "Saving..."
+        : mode === "edit"
+          ? "Update"
+          : "Create";
 
   return (
     <Card>
       <CardHeader>
-        <div className="flex items-center justify-between gap-3">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <CardTitle>{mode === "edit" ? "Edit Post" : "Create Post"}</CardTitle>
-          <Button variant="outline" asChild>
+          <Button variant="outline" asChild className="w-full sm:w-auto">
             <Link href="/posts">Back to list</Link>
           </Button>
         </div>
@@ -397,11 +407,11 @@ export function PostForm({ mode, documentId }: PostFormProps) {
         {loading && <p className="text-sm text-muted-foreground">Loading...</p>}
         {error && <p className="mb-3 text-sm text-destructive">{error}</p>}
         {!loading && (
-          <form className="space-y-3" onSubmit={onSubmit} noValidate>
-            <div className="inline-flex rounded-md border bg-muted p-1">
+          <form className="space-y-4 pb-20 md:pb-0" onSubmit={onSubmit} noValidate>
+            <div className="grid w-full grid-cols-2 rounded-md border bg-muted p-1 sm:inline-flex sm:w-auto">
               <button
                 type="button"
-                className={`rounded-sm px-3 py-1.5 text-sm ${
+                className={`rounded-sm px-3 py-2 text-sm font-medium ${
                   activeTab === "content" ? "bg-background shadow-sm" : "text-muted-foreground"
                 }`}
                 onClick={() => setActiveTab("content")}
@@ -410,164 +420,205 @@ export function PostForm({ mode, documentId }: PostFormProps) {
               </button>
               <button
                 type="button"
-                className={`rounded-sm px-3 py-1.5 text-sm ${activeTab === "img" ? "bg-background shadow-sm" : "text-muted-foreground"}`}
+                className={`rounded-sm px-3 py-2 text-sm font-medium ${activeTab === "img" ? "bg-background shadow-sm" : "text-muted-foreground"}`}
                 onClick={() => setActiveTab("img")}
               >
                 {totalMediaCount > 0 ? `Media (${totalMediaCount})` : "Media"}
               </button>
             </div>
             {activeTab === "content" && (
-              <>
-                <Input
-                  placeholder="Title"
-                  value={form.title}
-                  className={errors.title ? "border-destructive focus-visible:ring-destructive/20" : ""}
-                  onChange={(event) => {
-                    const nextTitle = event.target.value;
-                    const nextSlug = slugTouched ? form.slug : slugify(nextTitle);
-                    setForm((p) => ({
-                      ...p,
-                      title: nextTitle,
-                      slug: nextSlug,
-                    }));
-                    setErrors((prev) => ({
-                      ...prev,
-                      title: nextTitle.trim() ? undefined : prev.title,
-                      slug: nextSlug.trim() ? undefined : prev.slug,
-                    }));
-                  }}
-                  onBlur={() => {
-                    if (!form.title.trim()) {
-                      setErrors((prev) => ({ ...prev, title: "Title is required" }));
-                    } else {
-                      setErrors((prev) => ({ ...prev, title: undefined }));
-                    }
-                  }}
-                  required
-                />
-                <Input
-                  placeholder="Slug"
-                  value={form.slug}
-                  className={errors.slug ? "border-destructive focus-visible:ring-destructive/20" : ""}
-                  onChange={(event) => {
-                    setSlugTouched(true);
-                    const nextSlug = slugify(event.target.value);
-                    setForm((p) => ({ ...p, slug: nextSlug }));
-                    if (nextSlug.trim()) {
-                      setErrors((prev) => ({ ...prev, slug: undefined }));
-                    }
-                  }}
-                  onBlur={() => {
-                    if (!form.slug.trim()) {
-                      setErrors((prev) => ({ ...prev, slug: "Slug is required" }));
-                    } else {
-                      setErrors((prev) => ({ ...prev, slug: undefined }));
-                    }
-                  }}
-                  required
-                />
-                <div className="flex items-center gap-2">
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="post-title">Title</Label>
                   <Input
-                    value={form.authorLabel}
-                    placeholder="No author selected"
-                    readOnly
-                    className={errors.author ? "border-destructive focus-visible:ring-destructive/20" : ""}
+                    id="post-title"
+                    placeholder="Title"
+                    value={form.title}
+                    className={errors.title ? "border-destructive focus-visible:ring-destructive/20" : ""}
+                    onChange={(event) => {
+                      const nextTitle = event.target.value;
+                      const nextSlug = slugTouched ? form.slug : slugify(nextTitle);
+                      setForm((p) => ({
+                        ...p,
+                        title: nextTitle,
+                        slug: nextSlug,
+                      }));
+                      setErrors((prev) => ({
+                        ...prev,
+                        title: nextTitle.trim() ? undefined : prev.title,
+                        slug: nextSlug.trim() ? undefined : prev.slug,
+                      }));
+                    }}
                     onBlur={() => {
-                      if (!form.authorId) {
-                        setErrors((prev) => ({ ...prev, author: "Author is required" }));
+                      if (!form.title.trim()) {
+                        setErrors((prev) => ({ ...prev, title: "Title is required" }));
                       } else {
-                        setErrors((prev) => ({ ...prev, author: undefined }));
+                        setErrors((prev) => ({ ...prev, title: undefined }));
                       }
                     }}
+                    required
                   />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="icon-sm"
-                    onClick={() => setAuthorModalOpen(true)}
-                    title="Select author"
-                    aria-label="Select author"
-                  >
-                    <Search />
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="icon-sm"
-                    onClick={() => {
-                      void onSelectRandomSeedAuthor();
-                    }}
-                    title="Assign random seed author"
-                    aria-label="Assign random seed author"
-                    disabled={randomAuthorLoading}
-                  >
-                    <Dices />
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="icon-sm"
-                    onClick={() => {
-                      setForm((p) => ({ ...p, authorId: "", authorLabel: "" }));
-                      setErrors((prev) => ({ ...prev, author: "Author is required" }));
-                    }}
-                    title="Clear author"
-                    aria-label="Clear author"
-                    disabled={!form.authorId}
-                  >
-                    <UserX />
-                  </Button>
+                  {errors.title && <p className="text-sm text-destructive">{errors.title}</p>}
                 </div>
-                <MultiSelectBox
-                  options={categoryTreeOptions}
-                  value={form.categoryDocumentIds}
-                  className={errors.category ? "border-destructive focus-visible:ring-destructive/20" : ""}
-                  onChange={(next) => {
-                    setForm((p) => ({ ...p, categoryDocumentIds: next }));
-                    if (next.length > 0) {
-                      setErrors((prev) => ({ ...prev, category: undefined }));
-                    }
-                  }}
-                  onBlur={() => {
-                    if (form.categoryDocumentIds.length === 0) {
-                      setErrors((prev) => ({ ...prev, category: "Category is required" }));
-                    } else {
-                      setErrors((prev) => ({ ...prev, category: undefined }));
-                    }
-                  }}
-                  placeholder="Select categories"
-                />
-                <TagCombobox
-                  ref={tagComboboxRef}
-                  selected={selectedTags}
-                  options={tagOptions.map((tag) => ({ documentId: tag.documentId, name: tag.name }))}
-                  onChange={setSelectedTags}
-                  onCreateTag={onCreateTag}
-                />
-                <Input
-                  placeholder="Excerpt"
-                  value={form.excerpt}
-                  onChange={(event) => setForm((p) => ({ ...p, excerpt: event.target.value }))}
-                />
-                <RichTextEditor
-                  value={form.content}
-                  className={errors.content ? "border-destructive" : ""}
-                  onChange={(content) => {
-                    setForm((p) => ({ ...p, content }));
-                    if (hasContent(content)) {
-                      setErrors((prev) => ({ ...prev, content: undefined }));
-                    }
-                  }}
-                  onBlur={() => {
-                    if (!hasContent(form.content)) {
-                      setErrors((prev) => ({ ...prev, content: "Content is required" }));
-                    } else {
-                      setErrors((prev) => ({ ...prev, content: undefined }));
-                    }
-                  }}
-                  placeholder="Write post content..."
-                />
-              </>
+
+                <div className="space-y-2">
+                  <Label htmlFor="post-slug">Slug</Label>
+                  <Input
+                    id="post-slug"
+                    placeholder="Slug"
+                    value={form.slug}
+                    className={errors.slug ? "border-destructive focus-visible:ring-destructive/20" : ""}
+                    onChange={(event) => {
+                      setSlugTouched(true);
+                      const nextSlug = slugify(event.target.value);
+                      setForm((p) => ({ ...p, slug: nextSlug }));
+                      if (nextSlug.trim()) {
+                        setErrors((prev) => ({ ...prev, slug: undefined }));
+                      }
+                    }}
+                    onBlur={() => {
+                      if (!form.slug.trim()) {
+                        setErrors((prev) => ({ ...prev, slug: "Slug is required" }));
+                      } else {
+                        setErrors((prev) => ({ ...prev, slug: undefined }));
+                      }
+                    }}
+                    required
+                  />
+                  {errors.slug && <p className="text-sm text-destructive">{errors.slug}</p>}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="post-author">Author</Label>
+                  <div className="space-y-2 sm:flex sm:items-center sm:gap-2 sm:space-y-0">
+                    <Input
+                      id="post-author"
+                      value={form.authorLabel}
+                      placeholder="No author selected"
+                      readOnly
+                      className={errors.author ? "border-destructive focus-visible:ring-destructive/20" : ""}
+                      onBlur={() => {
+                        if (!form.authorId) {
+                          setErrors((prev) => ({ ...prev, author: "Author is required" }));
+                        } else {
+                          setErrors((prev) => ({ ...prev, author: undefined }));
+                        }
+                      }}
+                    />
+                    <div className="grid grid-cols-3 gap-2 sm:flex sm:gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon-sm"
+                        onClick={() => setAuthorModalOpen(true)}
+                        title="Select author"
+                        aria-label="Select author"
+                        className="h-10 w-full sm:h-8 sm:w-8"
+                      >
+                        <Search />
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon-sm"
+                        onClick={() => {
+                          void onSelectRandomSeedAuthor();
+                        }}
+                        title="Assign random seed author"
+                        aria-label="Assign random seed author"
+                        disabled={randomAuthorLoading}
+                        className="h-10 w-full sm:h-8 sm:w-8"
+                      >
+                        <Dices />
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon-sm"
+                        onClick={() => {
+                          setForm((p) => ({ ...p, authorId: "", authorLabel: "" }));
+                          setErrors((prev) => ({ ...prev, author: "Author is required" }));
+                        }}
+                        title="Clear author"
+                        aria-label="Clear author"
+                        disabled={!form.authorId}
+                        className="h-10 w-full sm:h-8 sm:w-8"
+                      >
+                        <UserX />
+                      </Button>
+                    </div>
+                  </div>
+                  {errors.author && <p className="text-sm text-destructive">{errors.author}</p>}
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Categories</Label>
+                  <MultiSelectBox
+                    options={categoryTreeOptions}
+                    value={form.categoryDocumentIds}
+                    className={errors.category ? "border-destructive focus-visible:ring-destructive/20" : ""}
+                    onChange={(next) => {
+                      setForm((p) => ({ ...p, categoryDocumentIds: next }));
+                      if (next.length > 0) {
+                        setErrors((prev) => ({ ...prev, category: undefined }));
+                      }
+                    }}
+                    onBlur={() => {
+                      if (form.categoryDocumentIds.length === 0) {
+                        setErrors((prev) => ({ ...prev, category: "Category is required" }));
+                      } else {
+                        setErrors((prev) => ({ ...prev, category: undefined }));
+                      }
+                    }}
+                    placeholder="Select categories"
+                  />
+                  {errors.category && <p className="text-sm text-destructive">{errors.category}</p>}
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Tags</Label>
+                  <TagCombobox
+                    ref={tagComboboxRef}
+                    selected={selectedTags}
+                    options={tagOptions.map((tag) => ({ documentId: tag.documentId, name: tag.name }))}
+                    onChange={setSelectedTags}
+                    onCreateTag={onCreateTag}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="post-excerpt">Excerpt</Label>
+                  <Input
+                    id="post-excerpt"
+                    placeholder="Short excerpt"
+                    value={form.excerpt}
+                    onChange={(event) => setForm((p) => ({ ...p, excerpt: event.target.value }))}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Content</Label>
+                  <RichTextEditor
+                    value={form.content}
+                    className={errors.content ? "border-destructive" : ""}
+                    onChange={(content) => {
+                      setForm((p) => ({ ...p, content }));
+                      if (hasContent(content)) {
+                        setErrors((prev) => ({ ...prev, content: undefined }));
+                      }
+                    }}
+                    onBlur={() => {
+                      if (!hasContent(form.content)) {
+                        setErrors((prev) => ({ ...prev, content: "Content is required" }));
+                      } else {
+                        setErrors((prev) => ({ ...prev, content: undefined }));
+                      }
+                    }}
+                    placeholder="Write post content..."
+                  />
+                  {errors.content && <p className="text-sm text-destructive">{errors.content}</p>}
+                </div>
+              </div>
             )}
             {activeTab === "img" && (
               <div className="space-y-2">
@@ -652,17 +703,11 @@ export function PostForm({ mode, documentId }: PostFormProps) {
                 )}
               </div>
             )}
-            <Button type="submit" disabled={saving || uploadingMedia || processingGallery}>
-              {processingGallery
-                ? "Processing media..."
-                : uploadingMedia
-                  ? "Uploading media..."
-                  : saving
-                    ? "Saving..."
-                    : mode === "edit"
-                      ? "Update"
-                      : "Create"}
-            </Button>
+            <div className="sticky bottom-0 -mx-6 border-t bg-background/95 px-6 py-3 backdrop-blur supports-[backdrop-filter]:bg-background/80 md:static md:mx-0 md:border-0 md:bg-transparent md:px-0 md:py-0 md:backdrop-blur-none">
+              <Button type="submit" disabled={saving || uploadingMedia || processingGallery} className="w-full md:w-auto">
+                {submitLabel}
+              </Button>
+            </div>
           </form>
         )}
         <PostAuthorPicker
