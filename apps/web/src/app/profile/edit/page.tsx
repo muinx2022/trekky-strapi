@@ -132,14 +132,14 @@ export default function EditProfilePage() {
 
   return (
     <div className="space-y-6">
-      <header>
-        <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">Sửa thông tin cá nhân</h1>
-        <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">Cập nhật ảnh đại diện và giới thiệu.</p>
+      <header className="overflow-hidden rounded-lg border border-gray-200 bg-white px-6 py-5 shadow-sm dark:border-gray-700 dark:bg-gray-800">
+        <h1 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-gray-100">Sửa thông tin cá nhân</h1>
+        <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">Cập nhật ảnh đại diện và giới thiệu.</p>
       </header>
 
-      <form onSubmit={onSubmit} className="space-y-4 rounded-xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-950">
+      <form onSubmit={onSubmit} className="space-y-4 rounded-lg border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800">
         <div className="space-y-2">
-          <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">Avatar</label>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Avatar</label>
           {avatarPreview && (
             <Image
               src={avatarPreview}
@@ -154,24 +154,24 @@ export default function EditProfilePage() {
             type="file"
             accept="image/*"
             onChange={onAvatarChange}
-            className="w-full rounded-md border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm text-zinc-800 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+            className="w-full rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-800 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
           />
         </div>
 
         <div className="space-y-1">
-          <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">Bio</label>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Bio</label>
           <textarea
             name="bio"
             value={bio}
             onChange={(event) => setBio(event.target.value)}
             rows={4}
-            className="w-full rounded-md border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm text-zinc-800 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+            className="w-full rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-800 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
           />
         </div>
 
         {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
         {message && <p className="text-sm text-emerald-600 dark:text-emerald-400">{message}</p>}
-        {loading && <p className="text-sm text-zinc-500 dark:text-zinc-400">Đang tải thông tin hồ sơ...</p>}
+        {loading && <p className="text-sm text-gray-500 dark:text-gray-400">Đang tải thông tin hồ sơ...</p>}
 
         <button
           type="submit"

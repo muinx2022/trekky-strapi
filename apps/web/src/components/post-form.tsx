@@ -215,23 +215,23 @@ function MultiSelectBox({
     <div ref={containerRef} className="relative">
       <button
         type="button"
-        className="flex min-h-10 w-full items-center justify-between gap-2 rounded-md border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm text-zinc-800 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+        className="flex min-h-10 w-full items-center justify-between gap-2 rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-800 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
         onClick={() => setOpen((c) => !c)}
       >
         <span className="flex flex-1 flex-wrap items-center gap-1 text-left">
           {selectedItems.length === 0 && (
-            <span className="text-zinc-500 dark:text-zinc-400">{placeholder}</span>
+            <span className="text-gray-500 dark:text-gray-400">{placeholder}</span>
           )}
           {selectedItems.map((item) => (
             <span
               key={item.value}
-              className="inline-flex items-center gap-1 rounded bg-zinc-200 px-2 py-1 text-xs text-zinc-800 dark:bg-zinc-700 dark:text-zinc-100"
+              className="inline-flex items-center gap-1 rounded bg-gray-200 px-2 py-1 text-xs text-gray-800 dark:bg-gray-600 dark:text-gray-100"
             >
               {item.label}
               <span
                 role="button"
                 aria-label={`Remove ${item.label}`}
-                className="inline-flex h-4 w-4 items-center justify-center rounded hover:bg-zinc-300 dark:hover:bg-zinc-600"
+                className="inline-flex h-4 w-4 items-center justify-center rounded hover:bg-gray-300 dark:hover:bg-gray-500"
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
@@ -243,17 +243,17 @@ function MultiSelectBox({
             </span>
           ))}
         </span>
-        <ChevronDown className="h-4 w-4 text-zinc-500 dark:text-zinc-400" />
+        <ChevronDown className="h-4 w-4 text-gray-500 dark:text-gray-400" />
       </button>
       {open && (
-        <div className="absolute z-30 mt-1 max-h-64 w-full overflow-y-auto rounded-md border border-zinc-200 bg-white p-1 shadow-md dark:border-zinc-700 dark:bg-zinc-950">
+        <div className="absolute z-30 mt-1 max-h-64 w-full overflow-y-auto rounded-md border border-gray-200 bg-white p-1 shadow-md dark:border-gray-700 dark:bg-gray-800">
           {options.map((option) => {
             const checked = value.includes(option.value);
             return (
               <button
                 key={option.value}
                 type="button"
-                className="flex w-full items-center justify-between rounded px-2 py-1.5 text-left text-sm text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                className="flex w-full items-center justify-between rounded px-2 py-1.5 text-left text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700"
                 onClick={() => toggleOption(option.value)}
                 style={{ paddingLeft: `${8 + option.depth * 16}px` }}
               >
@@ -263,7 +263,7 @@ function MultiSelectBox({
             );
           })}
           {options.length === 0 && (
-            <p className="px-2 py-1.5 text-sm text-zinc-500 dark:text-zinc-400">Chưa có danh mục</p>
+            <p className="px-2 py-1.5 text-sm text-gray-500 dark:text-gray-400">Chưa có danh mục</p>
           )}
         </div>
       )}
@@ -581,23 +581,23 @@ export function PostForm({ mode, documentId, jwt }: PostFormProps) {
   ];
 
   if (loadingPost) {
-    return <p className="text-sm text-zinc-500 py-8 text-center">Đang tải bài viết...</p>;
+    return <p className="text-sm text-gray-500 dark:text-gray-400 py-8 text-center">Đang tải bài viết...</p>;
   }
 
   return (
-    <form onSubmit={onSubmit} className="rounded-xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950">
+    <form onSubmit={onSubmit} className="rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800">
       <div className="p-5 pb-0 space-y-1">
-        <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">Tiêu đề</label>
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Tiêu đề</label>
         <input
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           required
-          className="w-full rounded-md border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm text-zinc-800 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-zinc-400 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+          className="w-full rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-800 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
         />
       </div>
 
       <div className="px-5 pt-4">
-        <nav className="flex gap-1 rounded-lg bg-zinc-100 dark:bg-zinc-800 p-1">
+        <nav className="flex gap-1 rounded-lg bg-gray-100 dark:bg-gray-700 p-1">
           {tabs.map(({ key, label }) => (
             <button
               key={key}
@@ -605,8 +605,8 @@ export function PostForm({ mode, documentId, jwt }: PostFormProps) {
               onClick={() => setActiveTab(key)}
               className={`flex-1 rounded-md px-4 py-1.5 text-sm font-semibold transition-all ${
                 activeTab === key
-                  ? "bg-white text-zinc-900 shadow-sm dark:bg-zinc-700 dark:text-zinc-100"
-                  : "text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
+                  ? "bg-white text-gray-900 shadow-sm dark:bg-gray-600 dark:text-gray-100"
+                  : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
               }`}
             >
               {label}
@@ -618,9 +618,9 @@ export function PostForm({ mode, documentId, jwt }: PostFormProps) {
       {activeTab === "content" && (
         <div className="p-5 space-y-4">
           <div className="space-y-1">
-            <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">Danh mục</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Danh mục</label>
             {loadingCategories ? (
-              <p className="text-sm text-zinc-500 dark:text-zinc-400">Đang tải danh mục...</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">Đang tải danh mục...</p>
             ) : (
               <MultiSelectBox
                 options={categoryTreeOptions}
@@ -632,22 +632,22 @@ export function PostForm({ mode, documentId, jwt }: PostFormProps) {
           </div>
 
           <div className="space-y-1">
-            <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">Tags</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Tags</label>
             <TagCombobox ref={tagComboboxRef} selected={selectedTags} onChange={setSelectedTags} jwt={jwt} />
           </div>
 
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">Nội dung</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Nội dung</label>
               <button
                 type="button"
                 onClick={() => setShowToolbar((v) => !v)}
-                className="text-xs font-medium text-zinc-500 hover:text-zinc-700 hover:underline"
+                className="text-xs font-medium text-gray-500 hover:text-gray-700 hover:underline"
               >
                 {showToolbar ? "Ẩn định dạng" : "Hiển thị định dạng"}
               </button>
             </div>
-            <div className="rounded-md border border-zinc-200 bg-zinc-50 p-3 dark:border-zinc-700 dark:bg-zinc-900">
+            <div className="rounded-md border border-gray-200 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-900">
               <TiptapEditor value={content} onChange={setContent} showToolbar={showToolbar} onMediaPicked={handleMediaPicked} />
             </div>
           </div>
@@ -657,7 +657,7 @@ export function PostForm({ mode, documentId, jwt }: PostFormProps) {
       {activeTab === "images" && (
         <div className="p-5 space-y-4">
           <div className="flex items-center justify-between">
-            <p className="text-sm text-zinc-500 dark:text-zinc-400">
+            <p className="text-sm text-gray-500 dark:text-gray-400">
               Ảnh &gt;{MAX_WIDTH}px tự động thu nhỏ. Ảnh tối đa 5MB, video tối đa 200MB.
             </p>
             <div className="relative" ref={mediaMenuRef}>
@@ -670,11 +670,11 @@ export function PostForm({ mode, documentId, jwt }: PostFormProps) {
                 {processingGallery ? "Đang xử lý..." : "+ Thêm media"}
               </button>
               {mediaMenuOpen && (
-                <div className="absolute right-0 top-full z-50 mt-1 min-w-[160px] rounded-md border border-zinc-200 bg-white py-1 shadow-md dark:border-zinc-700 dark:bg-zinc-900">
+                <div className="absolute right-0 top-full z-50 mt-1 min-w-[160px] rounded-md border border-gray-200 bg-white py-1 shadow-md dark:border-gray-700 dark:bg-gray-800">
                   <button
                     type="button"
                     onMouseDown={(e) => { e.preventDefault(); setMediaMenuOpen(false); fileInputRef.current?.click(); }}
-                    className="flex w-full items-center gap-2 px-3 py-2 text-xs text-zinc-700 hover:bg-zinc-100 dark:text-zinc-200 dark:hover:bg-zinc-800"
+                    className="flex w-full items-center gap-2 px-3 py-2 text-xs text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-700"
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <rect width="18" height="18" x="3" y="3" rx="2" ry="2" />
@@ -686,7 +686,7 @@ export function PostForm({ mode, documentId, jwt }: PostFormProps) {
                   <button
                     type="button"
                     onMouseDown={(e) => { e.preventDefault(); setMediaMenuOpen(false); cameraFileInputRef.current?.click(); }}
-                    className="md:hidden flex w-full items-center gap-2 px-3 py-2 text-xs text-zinc-700 hover:bg-zinc-100 dark:text-zinc-200 dark:hover:bg-zinc-800"
+                    className="md:hidden flex w-full items-center gap-2 px-3 py-2 text-xs text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-700"
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z" />
@@ -706,7 +706,7 @@ export function PostForm({ mode, documentId, jwt }: PostFormProps) {
             <button
               type="button"
               onClick={() => { if (window.innerWidth >= 768) { fileInputRef.current?.click(); } else { setMediaMenuOpen((v) => !v); } }}
-              className="w-full rounded-xl border-2 border-dashed border-zinc-200 dark:border-zinc-700 py-12 flex flex-col items-center gap-2 text-zinc-400 hover:border-zinc-400 hover:text-zinc-500 transition-colors"
+              className="w-full rounded-lg border-2 border-dashed border-gray-200 dark:border-gray-600 py-12 flex flex-col items-center gap-2 text-gray-400 hover:border-gray-400 hover:text-gray-500 transition-colors"
             >
               <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                 <rect width="18" height="18" x="3" y="3" rx="2" ry="2" />
@@ -721,7 +721,7 @@ export function PostForm({ mode, documentId, jwt }: PostFormProps) {
               {visibleExistingMedia.map((item) => (
                 <div
                   key={`existing-${item.id}`}
-                  className="relative aspect-square rounded-lg overflow-hidden border border-zinc-200 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-800 group"
+                  className="relative aspect-square rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-700 group"
                 >
                   {item.mime?.startsWith("video/") ? (
                     <video
@@ -750,7 +750,7 @@ export function PostForm({ mode, documentId, jwt }: PostFormProps) {
               {newMediaFiles.map((file, idx) => (
                 <div
                   key={`new-${idx}`}
-                  className="relative aspect-square rounded-lg overflow-hidden border border-zinc-200 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-800 group"
+                  className="relative aspect-square rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-700 group"
                 >
                   {file.type.startsWith("video/") ? (
                     <video src={newMediaPreviews[idx]} className="w-full h-full object-cover" />
@@ -775,7 +775,7 @@ export function PostForm({ mode, documentId, jwt }: PostFormProps) {
                 type="button"
                 onClick={() => { if (window.innerWidth >= 768) { fileInputRef.current?.click(); } else { setMediaMenuOpen((v) => !v); } }}
                 disabled={processingGallery}
-                className="aspect-square rounded-lg border-2 border-dashed border-zinc-200 dark:border-zinc-700 flex items-center justify-center text-zinc-400 hover:border-zinc-400 hover:text-zinc-500 transition-colors disabled:opacity-50"
+                className="aspect-square rounded-lg border-2 border-dashed border-gray-200 dark:border-gray-600 flex items-center justify-center text-gray-400 hover:border-gray-400 hover:text-gray-500 transition-colors disabled:opacity-50"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <line x1="12" x2="12" y1="5" y2="19" />
@@ -793,7 +793,7 @@ export function PostForm({ mode, documentId, jwt }: PostFormProps) {
           <button
             type="button"
             onClick={() => router.push("/my-posts")}
-            className="rounded-md border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 dark:border-zinc-700 dark:text-zinc-200"
+            className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700"
           >
             Hủy
           </button>

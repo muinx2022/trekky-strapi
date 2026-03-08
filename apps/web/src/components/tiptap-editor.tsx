@@ -91,7 +91,7 @@ export function TiptapEditor({ value, onChange, showToolbar, onMediaPicked }: Ti
     content: value,
     editorProps: {
       attributes: {
-        class: "prose prose-sm prose-zinc dark:prose-invert focus:outline-none min-h-[80px] w-full",
+        class: "prose prose-sm prose-zinc dark:prose-invert focus:outline-none w-full",
       },
     },
     onUpdate: ({ editor: currentEditor }) => {
@@ -378,7 +378,7 @@ export function TiptapEditor({ value, onChange, showToolbar, onMediaPicked }: Ti
         </div>
       )}
 
-      <div className="max-h-[480px] overflow-y-auto">
+      <div className="h-[340px] overflow-y-auto">
         <EditorContent editor={editor} className="w-full text-sm" />
       </div>
 

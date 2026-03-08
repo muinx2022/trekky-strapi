@@ -161,17 +161,17 @@ export const TagCombobox = forwardRef<TagComboboxHandle, {
 
   return (
     <div ref={containerRef} className="relative">
-      <div className="flex min-h-10 flex-wrap items-center gap-1 rounded-md border border-zinc-200 bg-zinc-50 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900">
+      <div className="flex min-h-10 flex-wrap items-center gap-1 rounded-md border border-gray-200 bg-gray-50 px-3 py-2 dark:border-gray-700 dark:bg-gray-900">
         {selected.map((tag) => (
           <span
             key={tag.documentId}
-            className="inline-flex items-center gap-1 rounded bg-zinc-200 px-2 py-0.5 text-xs text-zinc-800 dark:bg-zinc-700 dark:text-zinc-100"
+            className="inline-flex items-center gap-1 rounded bg-gray-200 px-2 py-0.5 text-xs text-gray-800 dark:bg-gray-600 dark:text-gray-100"
           >
             {tag.name}
             <button
               type="button"
               aria-label={`Xóa tag ${tag.name}`}
-              className="inline-flex h-3.5 w-3.5 items-center justify-center rounded hover:bg-zinc-300 dark:hover:bg-zinc-600"
+              className="inline-flex h-3.5 w-3.5 items-center justify-center rounded hover:bg-gray-300 dark:hover:bg-gray-500"
               onClick={() => removeTag(tag.documentId)}
             >
               <X className="h-2.5 w-2.5" />
@@ -194,18 +194,18 @@ export const TagCombobox = forwardRef<TagComboboxHandle, {
             }
           }}
           placeholder={selected.length === 0 ? "Gõ để tìm hoặc tạo tag..." : "Thêm tag..."}
-          className="min-w-[120px] flex-1 bg-transparent text-sm text-zinc-800 outline-none placeholder:text-zinc-400 dark:text-zinc-100 dark:placeholder:text-zinc-500"
+          className="min-w-[120px] flex-1 bg-transparent text-sm text-gray-800 outline-none placeholder:text-gray-400 dark:text-gray-100 dark:placeholder:text-gray-500"
         />
-        {(searching || pendingCount > 0) && <Loader2 className="h-4 w-4 animate-spin text-zinc-400" />}
+        {(searching || pendingCount > 0) && <Loader2 className="h-4 w-4 animate-spin text-gray-400" />}
       </div>
 
       {isDropdownVisible && (
-        <div className="absolute z-30 mt-1 w-full overflow-hidden rounded-md border border-zinc-200 bg-white shadow-md dark:border-zinc-700 dark:bg-zinc-950">
+        <div className="absolute z-30 mt-1 w-full overflow-hidden rounded-md border border-gray-200 bg-white shadow-md dark:border-gray-700 dark:bg-gray-800">
           {suggestions.map((tag) => (
             <button
               key={tag.documentId}
               type="button"
-              className="flex w-full items-center px-3 py-2 text-left text-sm text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
+              className="flex w-full items-center px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700"
               onClick={() => addTag(tag)}
             >
               {tag.name}
@@ -214,7 +214,7 @@ export const TagCombobox = forwardRef<TagComboboxHandle, {
           {showCreateOption && (
             <button
               type="button"
-              className="flex w-full items-center gap-1.5 px-3 py-2 text-left text-sm text-blue-600 hover:bg-zinc-100 dark:text-blue-400 dark:hover:bg-zinc-800"
+              className="flex w-full items-center gap-1.5 px-3 py-2 text-left text-sm text-blue-600 hover:bg-gray-100 dark:text-blue-400 dark:hover:bg-gray-700"
               onClick={() => void createTagAndAdd(trimmedQuery)}
               disabled={pendingCount > 0}
             >

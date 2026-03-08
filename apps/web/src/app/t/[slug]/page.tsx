@@ -59,11 +59,11 @@ export default async function TagPage({
 
   return (
     <div className="space-y-4">
-      <section className="overflow-hidden rounded-2xl border border-zinc-200 bg-gradient-to-br from-white via-zinc-50 to-zinc-100 px-6 py-6 shadow-sm dark:border-zinc-800 dark:from-zinc-950 dark:via-zinc-900 dark:to-zinc-950">
-        <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100 sm:text-3xl">#{tag.name}</h1>
+      <section className="overflow-hidden rounded-lg border border-gray-200 bg-white px-6 py-6 shadow-sm dark:border-gray-700 dark:bg-gray-800">
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 sm:text-3xl">#{tag.name}</h1>
 
         {tag.description && (
-          <div className="prose prose-zinc mt-3 max-w-none text-sm text-zinc-700 dark:prose-invert dark:text-zinc-300">
+          <div className="prose prose-sm mt-3 max-w-none text-gray-700 dark:text-gray-300">
             {typeof tag.description === "string" ? (
               <RichTextContent html={tag.description} />
             ) : (
@@ -72,10 +72,10 @@ export default async function TagPage({
           </div>
         )}
 
-        <div className="mt-4 border-t border-zinc-200 pt-4 dark:border-zinc-800">
+        <div className="mt-4 border-t border-gray-200 pt-4 dark:border-gray-700">
           <Link
             href="/"
-            className="text-sm text-zinc-500 transition-colors hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200"
+            className="text-sm text-gray-500 transition-colors hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200"
           >
             &larr; Về trang chủ
           </Link>

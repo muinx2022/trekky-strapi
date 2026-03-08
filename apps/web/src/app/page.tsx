@@ -14,11 +14,11 @@ export default async function HomePage() {
   return (
     <div className="space-y-4">
       {homePage && (
-        <section className="overflow-hidden rounded-2xl border border-zinc-200 bg-gradient-to-br from-white via-zinc-50 to-zinc-100 px-6 py-6 shadow-sm dark:border-zinc-800 dark:from-zinc-950 dark:via-zinc-900 dark:to-zinc-950">
-          <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100 sm:text-3xl">{homePage.title}</h1>
+        <section className="overflow-hidden rounded-lg border border-gray-200 bg-white px-6 py-6 shadow-sm dark:border-gray-700 dark:bg-gray-800">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 sm:text-3xl">{homePage.title}</h1>
           {homePage.content && (
             <div
-              className="prose prose-zinc mt-3 max-w-none text-sm text-zinc-700 dark:prose-invert dark:text-zinc-300"
+              className="prose prose-sm mt-3 max-w-none text-gray-700 dark:text-gray-300"
               dangerouslySetInnerHTML={{ __html: homePage.content }}
             />
           )}

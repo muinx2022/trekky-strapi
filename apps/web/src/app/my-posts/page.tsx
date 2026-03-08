@@ -154,10 +154,10 @@ export default function MyPostsPage() {
 
   return (
     <div className="space-y-6">
-      <header className="flex items-center justify-between">
+      <header className="flex items-center justify-between overflow-hidden rounded-lg border border-gray-200 bg-white px-6 py-5 shadow-sm dark:border-gray-700 dark:bg-gray-800">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">Bài viết của tôi</h1>
-          <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">Quản lý và chỉnh sửa bài viết của bạn</p>
+          <h1 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-gray-100">Bài viết của tôi</h1>
+          <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">Quản lý và chỉnh sửa bài viết của bạn</p>
         </div>
         <Link
           href="/my-posts/new"
@@ -178,11 +178,11 @@ export default function MyPostsPage() {
 
       {pendingPublishPost && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-md rounded-xl border border-zinc-200 bg-white p-5 shadow-xl dark:border-zinc-800 dark:bg-zinc-950">
-            <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Xác nhận xuất bản</h2>
-            <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
+          <div className="w-full max-w-md rounded-lg border border-gray-200 bg-white p-5 shadow-xl dark:border-gray-700 dark:bg-gray-800">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Xác nhận xuất bản</h2>
+            <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
               Bạn có chắc chắn muốn xuất bản bài viết{" "}
-              <span className="font-medium text-zinc-900 dark:text-zinc-100">
+              <span className="font-medium text-gray-900 dark:text-gray-100">
                 &quot;{pendingPublishPost.title}&quot;
               </span>
               ?
@@ -190,7 +190,7 @@ export default function MyPostsPage() {
             <div className="mt-5 flex justify-end gap-2">
               <button
                 type="button"
-                className="rounded-md border border-zinc-300 px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
+                className="rounded-md border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700"
                 onClick={() => setPendingPublishPost(null)}
               >
                 Hủy
@@ -215,7 +215,7 @@ export default function MyPostsPage() {
 
       {loading && (
         <div className="flex items-center justify-center py-12">
-          <div className="flex items-center gap-3 text-zinc-600 dark:text-zinc-400">
+          <div className="flex items-center gap-3 text-gray-600 dark:text-gray-400">
             <svg className="h-5 w-5 animate-spin" fill="none" viewBox="0 0 24 24">
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
@@ -226,12 +226,12 @@ export default function MyPostsPage() {
       )}
 
       {!loading && rows.length === 0 && (
-        <div className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-zinc-200 bg-zinc-50 py-12 dark:border-zinc-800 dark:bg-zinc-900/50">
-          <svg className="h-12 w-12 text-zinc-400 dark:text-zinc-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <div className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-200 bg-gray-50 py-12 dark:border-gray-700 dark:bg-gray-800/50">
+          <svg className="h-12 w-12 text-gray-400 dark:text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
           </svg>
-          <p className="mt-4 text-sm font-medium text-zinc-700 dark:text-zinc-300">Chưa có bài viết nào</p>
-          <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-500">Bắt đầu bằng cách tạo bài viết đầu tiên của bạn</p>
+          <p className="mt-4 text-sm font-medium text-gray-700 dark:text-gray-300">Chưa có bài viết nào</p>
+          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Bắt đầu bằng cách tạo bài viết đầu tiên của bạn</p>
           <Link
             href="/my-posts/new"
             className="mt-4 inline-flex items-center gap-2 rounded-full bg-gray-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-gray-600"
@@ -245,10 +245,10 @@ export default function MyPostsPage() {
       )}
 
       {!loading && rows.length > 0 && (
-        <div className="rounded-xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950">
-          <div className="divide-y divide-zinc-200 dark:divide-zinc-800">
+        <div className="rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800">
+          <div className="divide-y divide-gray-200 dark:divide-gray-700">
             {rows.map((post) => (
-              <div key={post.documentId} className="transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-900/50">
+              <div key={post.documentId} className="transition-colors hover:bg-gray-50 dark:hover:bg-gray-700/50">
                 <div className="flex items-start justify-between gap-4 p-4">
                   <div className="min-w-0 flex-1">
                     <MyPostRowCard post={post} />
@@ -257,7 +257,7 @@ export default function MyPostsPage() {
                     <button
                       type="button"
                       onClick={() => onToggleStatus(post)}
-                      className="group relative inline-flex h-9 w-9 items-center justify-center rounded-md border border-zinc-300 bg-white text-zinc-700 transition-colors hover:bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
+                      className="group relative inline-flex h-9 w-9 items-center justify-center rounded-md border border-gray-300 bg-white text-gray-700 transition-colors hover:bg-gray-100 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
                       title={post.status === "published" || post.publishedAt ? "Gỡ xuất bản" : "Xuất bản"}
                       aria-label={post.status === "published" || post.publishedAt ? "Gỡ xuất bản" : "Xuất bản"}
                     >
@@ -292,14 +292,14 @@ export default function MyPostsPage() {
           </div>
 
           {pagination.pageCount > 1 && (
-            <div className="flex items-center justify-between border-t border-zinc-200 px-4 py-3 dark:border-zinc-800">
-              <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            <div className="flex items-center justify-between border-t border-gray-200 px-4 py-3 dark:border-gray-700">
+              <p className="text-sm text-gray-600 dark:text-gray-400">
                 Trang {pagination.page} / {pagination.pageCount} <span className="text-zinc-400">•</span> Tổng: {pagination.total} bài viết
               </p>
               <div className="flex gap-2">
                 <button
                   type="button"
-                  className="inline-flex items-center gap-1 rounded-md border border-zinc-300 bg-white px-3 py-1.5 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
+                  className="inline-flex items-center gap-1 rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
                   disabled={page <= 1 || loading}
                   onClick={() => setPage((current) => Math.max(1, current - 1))}
                 >
@@ -310,7 +310,7 @@ export default function MyPostsPage() {
                 </button>
                 <button
                   type="button"
-                  className="inline-flex items-center gap-1 rounded-md border border-zinc-300 bg-white px-3 py-1.5 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
+                  className="inline-flex items-center gap-1 rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
                   disabled={page >= pagination.pageCount || loading}
                   onClick={() => setPage((current) => Math.min(pagination.pageCount, current + 1))}
                 >
