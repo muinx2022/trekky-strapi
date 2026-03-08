@@ -427,7 +427,7 @@ export type StrapiPage = {
 
 export async function getPageByType(type: "home" | "footer"): Promise<StrapiPage | null> {
   try {
-    const payload = await strapiFetch<StrapiListResponse<StrapiPage>>(
+    const payload = await strapiFetchNoStore<StrapiListResponse<StrapiPage>>(
       `/api/pages?filters[type][$eq]=${type}&pagination[pageSize]=1`,
     );
     return payload.data[0] ?? null;
@@ -438,7 +438,7 @@ export async function getPageByType(type: "home" | "footer"): Promise<StrapiPage
 
 export async function getFooterPages(): Promise<StrapiPage[]> {
   try {
-    const payload = await strapiFetch<StrapiListResponse<StrapiPage>>(
+    const payload = await strapiFetchNoStore<StrapiListResponse<StrapiPage>>(
       "/api/pages?filters[type][$eq]=footer&sort=title:asc&pagination[pageSize]=50",
     );
     return payload.data;
@@ -449,11 +449,55 @@ export async function getFooterPages(): Promise<StrapiPage[]> {
 
 export async function getPageBySlug(slug: string): Promise<StrapiPage | null> {
   try {
-    const payload = await strapiFetch<StrapiListResponse<StrapiPage>>(
+    const payload = await strapiFetchNoStore<StrapiListResponse<StrapiPage>>(
       `/api/pages?filters[slug][$eq]=${encodeURIComponent(slug)}&pagination[pageSize]=1`,
     );
     return payload.data[0] ?? null;
   } catch {
     return null;
   }
+}
+
+type SitemapEntry = {
+  slug: string;
+  documentId?: string;
+  updatedAt?: string;
+};
+
+async function getAllEntriesForSitemap(path: string): Promise<SitemapEntry[]> {
+  const pageSize = 1000;
+  let page = 1;
+  let pageCount = 1;
+  const entries: SitemapEntry[] = [];
+
+  while (page <= pageCount) {
+    const separator = path.includes("?") ? "&" : "?";
+    const payload = await strapiFetch<{
+      data: SitemapEntry[];
+      meta?: { pagination?: { pageCount?: number } };
+    }>(`${path}${separator}pagination[page]=${page}&pagination[pageSize]=${pageSize}`);
+    entries.push(...(payload.data ?? []));
+    pageCount = payload.meta?.pagination?.pageCount ?? 1;
+    page += 1;
+  }
+
+  return entries;
+}
+
+export async function getPostsForSitemap() {
+  return getAllEntriesForSitemap("/api/posts?fields[0]=slug&fields[1]=documentId&fields[2]=updatedAt&sort=updatedAt:desc");
+}
+
+export async function getCategoriesForSitemap() {
+  return getAllEntriesForSitemap("/api/categories?fields[0]=slug&fields[1]=updatedAt&sort=updatedAt:desc");
+}
+
+export async function getTagsForSitemap() {
+  return getAllEntriesForSitemap("/api/tags?fields[0]=slug&fields[1]=updatedAt&sort=updatedAt:desc");
+}
+
+export async function getPagesForSitemap() {
+  return getAllEntriesForSitemap(
+    "/api/pages?fields[0]=slug&fields[1]=updatedAt&filters[type][$eq]=footer&sort=updatedAt:desc",
+  );
 }

@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { SITE_URL } from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
-
 
 type SearchPageProps = {
   searchParams: Promise<{ q?: string }>;
@@ -51,9 +51,21 @@ async function fetchSearchResults(q: string): Promise<SearchResults> {
 export async function generateMetadata({ searchParams }: SearchPageProps): Promise<Metadata> {
   const { q } = await searchParams;
   const query = q?.trim() || "";
+  const canonical = query ? `${SITE_URL}/search?q=${encodeURIComponent(query)}` : `${SITE_URL}/search`;
+
   return {
     title: query ? `Tìm kiếm: ${query}` : "Tìm kiếm",
-    description: query ? `Kết quả tìm kiếm cho "${query}"` : "Tìm kiếm bài viết, tags và danh mục",
+    description: query ? `Kết quả tìm kiếm cho "${query}"` : "Tìm kiếm bài viết, tag và danh mục",
+    alternates: { canonical },
+    robots: {
+      index: false,
+      follow: false,
+      googleBot: {
+        index: false,
+        follow: false,
+        noimageindex: true,
+      },
+    },
   };
 }
 
@@ -72,7 +84,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
     <div className="space-y-4">
       <section className="overflow-hidden rounded-2xl border border-zinc-200 bg-gradient-to-br from-white via-zinc-50 to-zinc-100 px-6 py-6 shadow-sm">
         <h1 className="text-2xl font-bold text-zinc-900 sm:text-3xl">
-          {query ? `Kết quả tìm kiếm` : "Tìm kiếm"}
+          {query ? "Kết quả tìm kiếm" : "Tìm kiếm"}
         </h1>
         {query && (
           <p className="mt-1 text-sm text-zinc-500">
