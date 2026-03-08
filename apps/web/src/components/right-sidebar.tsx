@@ -1,5 +1,5 @@
 ﻿import Link from "next/link";
-import { getTopPosts, getTopTags, type Category } from "@/lib/strapi";
+import { getTopPosts, getTopTags, type Category, type StrapiPage } from "@/lib/strapi";
 
 const COLOR_CLASSES = [
   "bg-rose-400",
@@ -23,9 +23,10 @@ function getColorBySlug(slug: string) {
 
 type RightSidebarProps = {
   categories?: Category[];
+  footerPages?: StrapiPage[];
 };
 
-export async function RightSidebar({ categories = [] }: RightSidebarProps) {
+export async function RightSidebar({ categories = [], footerPages = [] }: RightSidebarProps) {
   let posts: Awaited<ReturnType<typeof getTopPosts>> = [];
   let tags: Awaited<ReturnType<typeof getTopTags>> = [];
 
@@ -41,7 +42,7 @@ export async function RightSidebar({ categories = [] }: RightSidebarProps) {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="flex flex-col gap-4 h-full">
       {categories.length > 0 && (
         <div className="rounded-lg border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
           <h3 className="border-b border-gray-100 px-4 py-3 text-sm font-semibold text-gray-800 dark:border-gray-700 dark:text-gray-100">Danh mục</h3>
@@ -128,6 +129,23 @@ export async function RightSidebar({ categories = [] }: RightSidebarProps) {
           </div>
         </div>
       )}
+
+      <div className="mt-auto rounded-lg border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800">
+        {footerPages.length > 0 && (
+          <div className="flex flex-col gap-1 mb-3">
+            {footerPages.map((page) => (
+              <Link
+                key={page.documentId}
+                href={`/page/${page.slug}`}
+                className="text-xs text-gray-500 hover:text-gray-800 hover:underline transition-colors dark:text-gray-400 dark:hover:text-gray-200"
+              >
+                {page.title}
+              </Link>
+            ))}
+          </div>
+        )}
+        <p className="text-xs text-gray-400 dark:text-gray-500">&copy; {new Date().getFullYear()} Trekky</p>
+      </div>
     </div>
   );
 }
