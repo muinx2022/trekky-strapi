@@ -41,6 +41,8 @@ export type AiContentCronSettings = AiAutomationJobStatus & {
   cron: string;
   postsPerRun: number;
   categoryDocumentIds: string[];
+  scenarioPrompt: string;
+  lastScenario: string | null;
   contentPrompt: string;
   imageProvider: ImageProvider;
   imageCountMin: number;
@@ -105,6 +107,7 @@ export type AiContentAutomationTestResult = {
     alt?: string;
   }>;
   preview: {
+    selectedScenario: string;
     title: string;
     excerpt: string;
     bodyText: string;
@@ -136,6 +139,7 @@ type PostEntry = {
 type CommentEntry = { id: number; documentId: string; authorName: string; content: string };
 
 type GeneratedContentPayload = {
+  selectedScenario: string;
   title: string;
   excerpt: string;
   bodyText: string;
@@ -164,6 +168,29 @@ const GENERIC_CONTENT_CATEGORY: CategoryEntry = {
   slug: 'du-lich-va-trai-nghiem',
 };
 
+const DEFAULT_CONTENT_SCENARIOS = [
+  'An sang o mot quan via he la, khong phai quan quen',
+  'Di xe do hoac xe lua duong dai',
+  'Ngu homestay o tinh le, chu nha nguoi dia phuong',
+  'Bat gap mot canh binh minh hoac hoang hon khong co tinh',
+  'Ghe cho dia phuong buoi sang som (khong phai cho dem)',
+  'An mot mon dac san vung mien lan dau',
+  'Di bien trai mua hoac bien vang',
+  'Leo nui hoac di trail ngan',
+  'Mot buoi toi o nha cung gia dinh, khong di dau',
+  'Ghe mot quan an nho o hem, khong co tren Google Maps',
+  'Chuyen di tu phat, khong co ke hoach truoc',
+  'Ngoi tren tau hoac pha ngam canh',
+  'Kham pha mot khu pho cu hoac lang nghe',
+  'An mot mon duong pho binh thuong nhung hom do ngon bat ngo',
+  'Trai nghiem mua bat ngo khi dang di choi',
+  'Nghi dem o khach san nho tinh le, view binh thuong nhung yen',
+  'Di mot minh, khong co ban dong hanh',
+  'Chuyen di cung ca gia dinh gom nguoi lon tuoi hoac tre nho',
+  'Ghe mot quan cu sau nhieu nam khong quay lai',
+  'Tinh co gap hoac tro chuyen voi nguoi la khi di choi',
+].join('\n');
+
 function getDefaultJobStatus(): AiAutomationJobStatus {
   return { lastRunAt: null, lastSuccessAt: null, lastError: null };
 }
@@ -176,12 +203,18 @@ export function getDefaultAiAutomationSettings(): AiAutomationSettings {
       cron: '0 */6 * * *',
       postsPerRun: 1,
       categoryDocumentIds: [],
+      scenarioPrompt: DEFAULT_CONTENT_SCENARIOS,
+      lastScenario: null,
       contentPrompt:
-        'Hay viet bai dang ngan bang tieng Viet ve cac trai nghiem du lich va doi song da dang. ' +
-        'Moi lan tao noi dung phai uu tien mot boi canh khac nhau, tranh lap lai cac motif quen thuoc nhu di cafe, ngoi quan quen, hen ban o quan cafe, tru khi chu de that su yeu cau. ' +
-        'Uu tien luan phien cac nhom chu de: chuyen di ngan, bien, nui, homestay, cho dia phuong, mon an vung mien, tau xe, khach san, binh minh, hoang hon, pho di bo, quan an, dac san, trai nghiem voi gia dinh, nhom ban, cap doi, di mot minh. ' +
-        'Title phai ro y, co cam xuc, khong giat tieu de. Noi dung bodyText chi 1 doan ngan, tu nhien, de doc, co hinh anh doi song, khong sao rong, khong qua quang cao. ' +
-        'Khong lap lai y tuong qua giong cac bai truoc. Tao excerpt ngan hon bodyText. Tao 3-6 relatedTags sat noi dung. Tao 3-5 imageSearchQueries bang tieng Anh, da dang goc nhin va boi canh.',
+        'Sau khi nhan duoc kich ban da chon, hay tao noi dung bai dang ngan bang tieng Viet dua tren kich ban do. ' +
+        'Giong van tu nhien nhu nguoi that dang nhan tin hoac dang story, khong can chi chu, khong can van ve. ' +
+        'Noi dung dai khoang 5 den 7 cau. Cam xuc that, don gian, kieu ke chuyen cho ban nghe. ' +
+        'Tranh dung tu ngữ sao rong, my tu, kieu "buc tranh doi song", "khoanh khac dang tran trong", "hanh trinh y nghia". ' +
+        'Thay bang ngon ngu binh thuong, de doc, doi thuong, neu hop canh co the hoi hoi xuong mot chut nhung van tu nhien. ' +
+        'Co the ket bai bang 1 cau hoi hoac loi goi mo de tang tuong tac neu that su hop. Han che emoji, toi da 1-2 neu can. ' +
+        'Hay tao excerpt ngan hon bodyText. Tao 3-6 relatedTags bang tieng Viet, ngan, sat noi dung. ' +
+        'Tao 5-8 imageSearchQueries bang tieng Anh, uu tien them modifier nhu candid, phone photo, real life, amateur, everyday, casual, natural light, unfiltered, snapshot de tranh anh stock qua dep. ' +
+        'Khong dung cac query kieu perfect travel photography hoac food photography.',
       imageProvider: 'auto',
       imageCountMin: 3,
       imageCountMax: 5,
@@ -243,6 +276,23 @@ function pickRandom<T>(items: T[]): T {
 
 function shuffle<T>(items: T[]) {
   return [...items].sort(() => Math.random() - 0.5);
+}
+
+function parseScenarioPrompt(value: string) {
+  return Array.from(
+    new Set(
+      String(value ?? '')
+        .split(/\r?\n/)
+        .map((item) => collapseWhitespace(item))
+        .filter(Boolean)
+    )
+  );
+}
+
+function pickScenario(scenarios: string[], lastScenario?: string | null) {
+  const normalizedLast = collapseWhitespace(String(lastScenario ?? ''));
+  const candidates = scenarios.filter((item) => item !== normalizedLast);
+  return pickRandom(candidates.length > 0 ? candidates : scenarios);
 }
 
 function escapeHtml(value: string) {
@@ -481,6 +531,9 @@ function normalizeSettings(input: Partial<AiAutomationSettings> | null | undefin
   merged.content.categoryDocumentIds = Array.isArray(merged.content.categoryDocumentIds)
     ? merged.content.categoryDocumentIds.map((value) => String(value).trim()).filter(Boolean)
     : [];
+  merged.content.scenarioPrompt =
+    String(merged.content.scenarioPrompt ?? defaults.content.scenarioPrompt).trim() || defaults.content.scenarioPrompt;
+  merged.content.lastScenario = merged.content.lastScenario ? String(merged.content.lastScenario).trim() : null;
   merged.content.contentPrompt = String(merged.content.contentPrompt ?? defaults.content.contentPrompt).trim();
   merged.content.imageProvider = ['auto', 'google', 'pexels'].includes(merged.content.imageProvider)
     ? merged.content.imageProvider
@@ -585,6 +638,7 @@ export async function updateAiAutomationSettings(
       lastRunAt: current.content.lastRunAt,
       lastSuccessAt: current.content.lastSuccessAt,
       lastError: current.content.lastError,
+      lastScenario: current.content.lastScenario,
     },
     comments: {
       ...current.comments,
@@ -626,6 +680,9 @@ export async function updateAiAutomationSettings(
   }
   if (!next.content.contentPrompt) {
     throw new Error('Content prompt is required');
+  }
+  if (parseScenarioPrompt(next.content.scenarioPrompt).length === 0) {
+    throw new Error('At least one content scenario is required');
   }
   if (!next.comments.commentPrompt) {
     throw new Error('Comment prompt is required');
@@ -923,7 +980,8 @@ export async function checkAiProviderConnection(input: {
 async function generateStructuredContent(
   selected: SelectedModel,
   prompt: string,
-  category: CategoryEntry
+  category: CategoryEntry,
+  scenario: string
 ): Promise<GeneratedContentPayload> {
   const raw = await generateProviderText(selected, {
     systemPrompt:
@@ -931,12 +989,13 @@ async function generateStructuredContent(
       'Tra ve json hop le duy nhat, khong markdown, khong giai thich. ' +
       'json gom: title, excerpt, bodyText, imageSearchQueries, relatedTags, imageTheme, mediaMode. ' +
       'Title phai co y nghia ro, co cam xuc, tu nhien. ' +
-      'bodyText chi 1 doan ngan, 2-4 cau. excerpt ngan hon bodyText. ' +
-      'imageSearchQueries la mang 3-5 cum tu tim anh bang tieng Anh, phu hop voi bai viet. ' +
+      'bodyText chi 1 doan ngan, 5-7 cau ngan, de doc. excerpt ngan hon bodyText. ' +
+      'imageSearchQueries la mang 5-8 cum tu tim anh bang tieng Anh, phu hop voi bai viet. ' +
       'relatedTags la mang 3-6 tag ngan bang tieng Viet, viet thuong, sat chu de bai viet. ' +
       'mediaMode uu tien "body".',
     userPrompt:
       `Category: ${category.name}\n` +
+      `Selected scenario: ${scenario}\n` +
       `Content prompt: ${prompt}\n` +
       'Viet bai dang bang tieng Viet. Chu de gan voi du lich, trai nghiem, cam xuc, khoanh khac doi thuong. Output must be valid json.',
     maxTokens: 700,
@@ -963,10 +1022,11 @@ async function generateStructuredContent(
   }
 
   return {
+    selectedScenario: scenario,
     title,
     excerpt: excerpt || bodyText.slice(0, 180),
     bodyText,
-    imageSearchQueries: queries.length > 0 ? queries.slice(0, 5) : [category.name, title],
+    imageSearchQueries: queries.length > 0 ? queries.slice(0, 8) : [category.name, title],
     relatedTags,
     imageTheme: collapseWhitespace(String(parsed.imageTheme ?? category.name)),
     mediaMode: parsed.mediaMode === 'gallery' ? 'gallery' : 'body',
@@ -976,13 +1036,14 @@ async function generateStructuredContent(
 async function generateStructuredContentWithFallback(
   modelPool: SelectedModel[],
   prompt: string,
-  category: CategoryEntry
+  category: CategoryEntry,
+  scenario: string
 ) {
   const errors: string[] = [];
 
   for (const selectedModel of shuffle(modelPool)) {
     try {
-      const generated = await generateStructuredContent(selectedModel, prompt, category);
+      const generated = await generateStructuredContent(selectedModel, prompt, category, scenario);
       return { selectedModel, generated, errors };
     } catch (error) {
       errors.push(
@@ -1216,7 +1277,7 @@ async function createDraftPost(
 async function persistJobStatus(
   strapi: Core.Strapi,
   job: 'content' | 'comments',
-  patch: Partial<AiAutomationJobStatus>
+  patch: Partial<AiAutomationJobStatus> & { lastScenario?: string | null }
 ) {
   const current = await getAiAutomationSettings(strapi);
   const currentJob = current[job];
@@ -1292,7 +1353,9 @@ export async function runContentAutomation(strapi: Core.Strapi): Promise<AiAutom
           const author = pickRandom(users);
           const category = categories.length > 0 ? pickRandom(categories) : GENERIC_CONTENT_CATEGORY;
           const selectedModel = pickRandom(modelPool);
-          const generated = await generateStructuredContent(selectedModel, settings.content.contentPrompt, category);
+          const scenarios = parseScenarioPrompt(settings.content.scenarioPrompt);
+          const scenario = pickScenario(scenarios, settings.content.lastScenario);
+          const generated = await generateStructuredContent(selectedModel, settings.content.contentPrompt, category, scenario);
           const slugBase = slugify(generated.title) || `ai-post-${Date.now()}`;
           let uploaded: UploadResult[] = [];
 
@@ -1385,6 +1448,8 @@ export async function runContentAutomation(strapi: Core.Strapi): Promise<AiAutom
           } else {
             result.galleryImages = (result.galleryImages ?? 0) + uploaded.length;
           }
+          settings.content.lastScenario = scenario;
+          await persistJobStatus(strapi, 'content', { lastScenario: scenario });
         } catch (error) {
           result.skipped += 1;
           result.errors.push(error instanceof Error ? error.message : String(error));
@@ -1414,9 +1479,11 @@ export async function testContentAutomation(strapi: Core.Strapi): Promise<AiCont
 
   const availableCategories = await fetchContentCategories(strapi, settings.content.categoryDocumentIds);
   const category = availableCategories[0] ?? (await fetchAnyPublishedCategory(strapi)) ?? GENERIC_CONTENT_CATEGORY;
+  const scenarios = parseScenarioPrompt(settings.content.scenarioPrompt);
+  const scenario = pickScenario(scenarios, settings.content.lastScenario);
 
   const selectedModel = pickRandom(modelPool);
-  const generated = await generateStructuredContent(selectedModel, settings.content.contentPrompt, category);
+  const generated = await generateStructuredContent(selectedModel, settings.content.contentPrompt, category, scenario);
   const images: Array<{ provider: ImageSearchProvider; url: string; alt?: string }> = [];
 
   if (hasImageProviderCredentials(settings, settings.content.imageProvider)) {
@@ -1440,6 +1507,8 @@ export async function testContentAutomation(strapi: Core.Strapi): Promise<AiCont
     }
   }
 
+  await persistJobStatus(strapi, 'content', { lastScenario: scenario });
+
   return {
     job: 'content',
     provider: selectedModel.provider,
@@ -1451,6 +1520,7 @@ export async function testContentAutomation(strapi: Core.Strapi): Promise<AiCont
     },
     images,
     preview: {
+      selectedScenario: generated.selectedScenario,
       title: generated.title,
       excerpt: generated.excerpt,
       bodyText: generated.bodyText,

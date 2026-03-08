@@ -189,7 +189,7 @@ export function PostCard({ post }: { post: Post }) {
             <Link
               key={tag.documentId}
               href={`/t/${tag.slug}`}
-              className="inline-flex items-center px-2 py-0.5 rounded-full bg-gray-50 text-xs text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors border border-gray-100"
+              className="inline-flex items-center px-2 py-0.5 rounded-full bg-gray-100 text-xs text-gray-500 hover:bg-gray-200 hover:text-gray-700 transition-colors"
             >
               #{tag.name}
             </Link>

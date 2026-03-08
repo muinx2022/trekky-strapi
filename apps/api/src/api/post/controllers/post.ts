@@ -139,7 +139,10 @@ export default factories.createCoreController('api::post.post', ({ strapi }) => 
       if (wasPublished) {
         try {
           const docsApi = strapi.documents('api::post.post') as any;
-          if (typeof docsApi.publish === 'function') {
+          if (typeof docsApi.unpublish === 'function' && typeof docsApi.publish === 'function') {
+            await docsApi.unpublish({ documentId });
+            await docsApi.publish({ documentId });
+          } else if (typeof docsApi.publish === 'function') {
             await docsApi.publish({ documentId });
           } else if (existing.id) {
             await strapi.entityService.update('api::post.post', existing.id as number, {

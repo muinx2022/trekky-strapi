@@ -11,8 +11,6 @@ import {
   deleteTag,
   listTags,
   mergeTags,
-  publishTag,
-  unpublishTag,
   type PaginationMeta,
   type TagItem,
 } from "@/lib/admin-api";
@@ -45,7 +43,6 @@ export function TagsManager() {
   const [keyword, setKeyword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [togglingDocumentId, setTogglingDocumentId] = useState<string | null>(null);
   const [mergeSourceDocumentId, setMergeSourceDocumentId] = useState<string | null>(null);
   const [mergeTargetDocumentId, setMergeTargetDocumentId] = useState<string>("");
   const [merging, setMerging] = useState(false);
@@ -93,33 +90,6 @@ export function TagsManager() {
         description: deleteError instanceof Error ? deleteError.message : undefined,
         variant: "error",
       });
-    }
-  };
-
-  const onTogglePublished = async (item: TagItem) => {
-    try {
-      setTogglingDocumentId(item.documentId);
-      const updated = item.publishedAt ? await unpublishTag(item.documentId) : await publishTag(item.documentId);
-      setRows((prev) =>
-        prev.map((row) =>
-          row.documentId === item.documentId
-            ? { ...row, publishedAt: updated.publishedAt ?? null, updatedAt: updated.updatedAt }
-            : row,
-        ),
-      );
-      toast({
-        title: updated.publishedAt ? "Tag published" : "Tag moved to draft",
-        variant: "success",
-      });
-    } catch (toggleError) {
-      setError(toggleError instanceof Error ? toggleError.message : "Failed to change publish status");
-      toast({
-        title: "Failed to change status",
-        description: toggleError instanceof Error ? toggleError.message : undefined,
-        variant: "error",
-      });
-    } finally {
-      setTogglingDocumentId(null);
     }
   };
 
@@ -242,7 +212,6 @@ export function TagsManager() {
                 <th className="px-3 py-2 font-medium">Slug</th>
                 <th className="px-3 py-2 font-medium">Aliases</th>
                 <th className="px-3 py-2 font-medium">Updated</th>
-                <th className="px-3 py-2 font-medium">Status</th>
                 <th className="px-3 py-2 text-right font-medium">Actions</th>
               </tr>
             </thead>
@@ -257,27 +226,6 @@ export function TagsManager() {
                     </span>
                   </td>
                   <td className="px-3 py-2 text-muted-foreground">{formatDate(item.updatedAt)}</td>
-                  <td className="px-3 py-2">
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        className={`relative inline-flex h-4 w-7 items-center rounded-full transition-colors ${
-                          item.publishedAt ? "bg-emerald-600" : "bg-muted-foreground/30"
-                        }`}
-                        onClick={() => onTogglePublished(item)}
-                        disabled={togglingDocumentId === item.documentId}
-                        title={item.publishedAt ? "Published" : "Draft"}
-                      >
-                        <span
-                          className={`inline-block h-3 w-3 transform rounded-full bg-background shadow transition-transform ${
-                            item.publishedAt ? "translate-x-[14px]" : "translate-x-0.5"
-                          }`}
-                        />
-                        <span className="sr-only">{item.publishedAt ? "Published" : "Draft"}</span>
-                      </button>
-                      <span className="text-xs text-muted-foreground">{item.publishedAt ? "Published" : "Draft"}</span>
-                    </div>
-                  </td>
                   <td className="px-3 py-2">
                     <div className="ml-auto flex w-fit gap-1.5 opacity-100 pointer-events-auto transition-opacity duration-150 md:opacity-0 md:pointer-events-none md:group-hover:opacity-100 md:group-hover:pointer-events-auto md:group-focus-within:opacity-100 md:group-focus-within:pointer-events-auto">
                       <IconAction
@@ -310,7 +258,7 @@ export function TagsManager() {
               ))}
               {rows.length === 0 && !loading && (
                 <tr>
-                  <td colSpan={6} className="px-3 py-6 text-center text-sm text-muted-foreground">
+                  <td colSpan={5} className="px-3 py-6 text-center text-sm text-muted-foreground">
                     No tags yet.
                   </td>
                 </tr>

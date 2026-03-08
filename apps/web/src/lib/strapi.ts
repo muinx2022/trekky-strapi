@@ -406,8 +406,8 @@ export async function getCategoryBySlug(slug: string) {
 }
 export async function getPostByDocumentId(documentId: string) {
   try {
-    const payload = await strapiFetch<StrapiListResponse<Post>>(
-      `/api/posts?filters[documentId][$eq]=${documentId}&populate[categories][fields][0]=name&populate[categories][fields][1]=slug&populate[tags][fields][0]=name&populate[tags][fields][1]=slug&populate[images][fields][0]=url&populate[images][fields][1]=alternativeText&populate[author][fields][0]=id&populate[author][fields][1]=username&populate[author][populate][avatar][fields][0]=url`,
+    const payload = await strapiFetchNoStore<StrapiListResponse<Post>>(
+      `/api/posts?filters[documentId][$eq]=${documentId}&populate[categories][fields][0]=name&populate[categories][fields][1]=slug&populate[tags][fields][0]=documentId&populate[tags][fields][1]=name&populate[tags][fields][2]=slug&populate[images][fields][0]=url&populate[images][fields][1]=alternativeText&populate[author][fields][0]=id&populate[author][fields][1]=username&populate[author][populate][avatar][fields][0]=url`,
     );
     return payload.data[0] ?? null;
   } catch (error) {

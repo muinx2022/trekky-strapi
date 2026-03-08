@@ -158,10 +158,38 @@ export default factories.createCoreService(UID, ({ strapi }) => ({
       const authorId = Number(data.author);
       data.author = Number.isFinite(authorId) ? authorId : null;
     }
-    return strapi.documents(UID).update({
+    let wasPublished = false;
+    try {
+      const published = await strapi.documents(UID).findOne({
+        documentId,
+        status: 'published',
+        fields: ['publishedAt'],
+      });
+      wasPublished = Boolean(published);
+    } catch {
+      wasPublished = false;
+    }
+
+    const updated = await strapi.documents(UID).update({
       documentId,
       data,
     });
+
+    if (wasPublished) {
+      const documentsApi = strapi.documents(UID) as any;
+      if (typeof documentsApi.unpublish === 'function' && typeof documentsApi.publish === 'function') {
+        await documentsApi.unpublish({ documentId });
+        const result = await documentsApi.publish({ documentId });
+        return result?.entries?.[0] ?? updated;
+      }
+
+      if (typeof documentsApi.publish === 'function') {
+        const result = await documentsApi.publish({ documentId });
+        return result?.entries?.[0] ?? updated;
+      }
+    }
+
+    return updated;
   },
 
   async deleteForAdmin(documentId: string) {

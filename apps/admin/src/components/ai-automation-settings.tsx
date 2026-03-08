@@ -95,6 +95,7 @@ function TestResult({
           Test model: {result.provider} / {result.model}
         </p>
         <p>Category: {result.category.name}</p>
+        <p>Scenario: {result.preview.selectedScenario}</p>
         <p>Title: {result.preview.title}</p>
         <p>Excerpt: {result.preview.excerpt}</p>
         <p>Body: {result.preview.bodyText}</p>
@@ -348,6 +349,10 @@ export function AiAutomationSettingsScreen() {
             <div className="space-y-6 p-5">
               <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
                 <div className="space-y-3">
+                  <div className="rounded-lg border p-4">
+                    <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Scenario</p>
+                    <p className="mt-2 text-sm">{lastTest.content.preview.selectedScenario}</p>
+                  </div>
                   <div className="rounded-lg border p-4">
                     <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Title</p>
                     <p className="mt-2 font-medium">{lastTest.content.preview.title}</p>
@@ -709,6 +714,22 @@ export function AiAutomationSettingsScreen() {
                   Current selection contains draft/unpublished categories. Re-select published categories, then save.
                 </p>
               ) : null}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="content-scenarios">Scenario list</Label>
+              <Textarea
+                id="content-scenarios"
+                rows={8}
+                value={settings.content.scenarioPrompt}
+                onChange={(event) => updateContent({ scenarioPrompt: event.target.value })}
+              />
+              <p className="text-xs text-muted-foreground">
+                One scenario per line. Each run/test picks one random scenario and avoids the most recently used one.
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Last scenario: {settings.content.lastScenario ?? "None"}
+              </p>
             </div>
 
             <div className="space-y-2">

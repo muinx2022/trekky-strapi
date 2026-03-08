@@ -3,10 +3,6 @@ import { factories } from '@strapi/strapi';
 const UID = 'api::tag.tag';
 const POST_UID = 'api::post.post';
 
-function toStatus(status: unknown): 'draft' | 'published' | undefined {
-  return status === 'draft' || status === 'published' ? status : undefined;
-}
-
 function toPagination(query: any) {
   const page = Math.max(1, Number(query?.pagination?.page ?? 1) || 1);
   const pageSize = Math.min(100, Math.max(1, Number(query?.pagination?.pageSize ?? 10) || 10));
@@ -43,20 +39,10 @@ function normalizeTagPayload(payload: any) {
 }
 
 async function findTagByDocumentId(strapi: any, documentId: string) {
-  const [draftEntry, publishedEntry] = await Promise.all([
-    strapi.documents(UID).findOne({
-      documentId,
-      populate: ['posts'],
-      status: 'draft',
-    }),
-    strapi.documents(UID).findOne({
-      documentId,
-      populate: ['posts'],
-      status: 'published',
-    }),
-  ]);
-
-  return draftEntry ?? publishedEntry ?? null;
+  return strapi.documents(UID).findOne({
+    documentId,
+    populate: ['posts'],
+  });
 }
 
 async function findDocumentPostIdsForTag(strapi: any, tagDocumentId: string) {
@@ -103,7 +89,6 @@ export default factories.createCoreService(UID, ({ strapi }) => ({
   async listForAdmin(query: any) {
     const { page, pageSize } = toPagination(query);
     const sort = query?.sort ?? 'updatedAt:desc';
-    const status = toStatus(query?.status);
     const keyword = String(query?.q ?? '').trim();
     const keywordFilters = keyword
       ? {
@@ -125,9 +110,8 @@ export default factories.createCoreService(UID, ({ strapi }) => ({
         filters,
         populate: query?.populate,
         pagination: { page, pageSize },
-        status,
       }),
-      strapi.documents(UID).count({ status, filters }),
+      strapi.documents(UID).count({ filters }),
     ]);
 
     return {
@@ -148,7 +132,6 @@ export default factories.createCoreService(UID, ({ strapi }) => ({
       documentId,
       populate: query?.populate,
       fields: query?.fields,
-      status: toStatus(query?.status),
       locale: query?.locale,
     });
   },
@@ -157,7 +140,6 @@ export default factories.createCoreService(UID, ({ strapi }) => ({
     const data = normalizeTagPayload(payload);
     return strapi.documents(UID).create({
       data,
-      status: 'draft',
     });
   },
 
@@ -171,61 +153,6 @@ export default factories.createCoreService(UID, ({ strapi }) => ({
 
   async deleteForAdmin(documentId: string) {
     return strapi.documents(UID).delete({ documentId });
-  },
-
-  async publishForAdmin(documentId: string) {
-    const documentsApi = strapi.documents(UID) as any;
-    if (typeof documentsApi.publish === 'function') {
-      const result = await documentsApi.publish({ documentId });
-      return result?.entries?.[0] ?? null;
-    }
-
-    const rows = (await strapi.entityService.findMany(UID, {
-      fields: ['id'],
-      filters: { documentId: { $eq: documentId } },
-      publicationState: 'preview',
-      limit: 1,
-    } as any)) as Array<{ id: number }>;
-    const entityId = rows?.[0]?.id;
-    if (!entityId) {
-      throw new Error('Tag not found');
-    }
-
-    await strapi.entityService.update(UID, entityId, {
-      data: { publishedAt: new Date().toISOString() },
-    });
-
-    return strapi.documents(UID).findOne({
-      documentId,
-      status: 'published',
-    });
-  },
-
-  async unpublishForAdmin(documentId: string) {
-    const documentsApi = strapi.documents(UID) as any;
-    if (typeof documentsApi.unpublish === 'function') {
-      return documentsApi.unpublish({ documentId });
-    }
-
-    const rows = (await strapi.entityService.findMany(UID, {
-      fields: ['id'],
-      filters: { documentId: { $eq: documentId } },
-      publicationState: 'preview',
-      limit: 1,
-    } as any)) as Array<{ id: number }>;
-    const entityId = rows?.[0]?.id;
-    if (!entityId) {
-      throw new Error('Tag not found');
-    }
-
-    await strapi.entityService.update(UID, entityId, {
-      data: { publishedAt: null },
-    });
-
-    return strapi.documents(UID).findOne({
-      documentId,
-      status: 'draft',
-    });
   },
 
   async mergeForAdmin(sourceDocumentId: string, targetDocumentId: string) {
@@ -249,11 +176,6 @@ export default factories.createCoreService(UID, ({ strapi }) => ({
           documentId: postDocumentId,
           populate: ['tags'],
           status: 'draft',
-        })) ??
-        (await postDocuments.findOne({
-          documentId: postDocumentId,
-          populate: ['tags'],
-          status: 'published',
         }));
 
       if (!postEntry) {

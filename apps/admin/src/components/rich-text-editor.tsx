@@ -43,7 +43,7 @@ export function RichTextEditor({
     content: value || "<p></p>",
     editorProps: {
       attributes: {
-        class: "tiptap min-h-[180px] rounded-md px-3 py-2 text-sm focus:outline-none",
+        class: "tiptap h-[420px] overflow-y-auto rounded-md px-3 py-2 text-sm focus:outline-none md:h-[520px]",
         "data-placeholder": placeholder ?? "",
       },
     },
@@ -211,7 +211,7 @@ export function RichTextEditor({
           onChange={onUploadImage}
         />
       </div>
-      <EditorContent editor={editor} />
+      <EditorContent editor={editor} className="max-h-[520px] overflow-hidden" />
     </div>
   );
 }

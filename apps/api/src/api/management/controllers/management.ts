@@ -273,24 +273,6 @@ export default {
     ctx.body = { data: { documentId } };
   },
 
-  async publishTag(ctx: any) {
-    const service = strapi.service('api::tag.tag') as any;
-    const documentId = readDocumentId(ctx);
-    if (!documentId) return;
-
-    const data = await service.publishForAdmin(documentId);
-    ctx.body = { data };
-  },
-
-  async unpublishTag(ctx: any) {
-    const service = strapi.service('api::tag.tag') as any;
-    const documentId = readDocumentId(ctx);
-    if (!documentId) return;
-
-    const data = await service.unpublishForAdmin(documentId);
-    ctx.body = { data };
-  },
-
   async mergeTags(ctx: any) {
     const service = strapi.service('api::tag.tag') as any;
     const sourceDocumentId = String(ctx.params?.sourceDocumentId ?? '').trim();

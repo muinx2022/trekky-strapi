@@ -655,7 +655,7 @@ export interface ApiTagTag extends Struct.CollectionTypeSchema {
     singularName: 'tag';
   };
   options: {
-    draftAndPublish: true;
+    draftAndPublish: false;
   };
   attributes: {
     aliases: Schema.Attribute.JSON;

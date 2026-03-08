@@ -35,8 +35,6 @@ export default {
     { method: 'POST', path: '/management/tags', handler: 'management.createTag', config: adminOnly },
     { method: 'PUT', path: '/management/tags/:documentId', handler: 'management.updateTag', config: adminOnly },
     { method: 'DELETE', path: '/management/tags/:documentId', handler: 'management.deleteTag', config: adminOnly },
-    { method: 'POST', path: '/management/tags/:documentId/publish', handler: 'management.publishTag', config: adminOnly },
-    { method: 'POST', path: '/management/tags/:documentId/unpublish', handler: 'management.unpublishTag', config: adminOnly },
     { method: 'POST', path: '/management/tags/:sourceDocumentId/merge/:targetDocumentId', handler: 'management.mergeTags', config: adminOnly },
 
     { method: 'GET', path: '/management/comments', handler: 'management.listComments', config: adminOnly },

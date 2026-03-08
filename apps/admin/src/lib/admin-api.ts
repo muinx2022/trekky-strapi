@@ -192,6 +192,8 @@ export type AiContentCronSettings = AiAutomationJobStatus & {
   cron: string;
   postsPerRun: number;
   categoryDocumentIds: string[];
+  scenarioPrompt: string;
+  lastScenario: string | null;
   contentPrompt: string;
   imageProvider: "auto" | "google" | "pexels";
   imageCountMin: number;
@@ -260,6 +262,7 @@ export type AiContentAutomationTestResult = {
     alt?: string;
   }>;
   preview: {
+    selectedScenario: string;
     title: string;
     excerpt: string;
     bodyText: string;
@@ -660,20 +663,6 @@ export async function updateTag(documentId: string, input: TagInput) {
 
 export async function deleteTag(documentId: string) {
   await request(`/api/management/tags/${documentId}`, { method: "DELETE" });
-}
-
-export async function publishTag(documentId: string) {
-  const payload = await request<ApiResponse<TagItem>>(`/api/management/tags/${documentId}/publish`, {
-    method: "POST",
-  });
-  return toItem<TagItem>(payload);
-}
-
-export async function unpublishTag(documentId: string) {
-  const payload = await request<ApiResponse<TagItem>>(`/api/management/tags/${documentId}/unpublish`, {
-    method: "POST",
-  });
-  return toItem<TagItem>(payload);
 }
 
 export async function mergeTags(sourceDocumentId: string, targetDocumentId: string) {
