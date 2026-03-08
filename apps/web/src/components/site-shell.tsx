@@ -56,40 +56,23 @@ export async function SiteShell({ children }: { children: ReactNode }) {
         </div>
       </div>
 
-      <footer className="sticky bottom-0 z-40 border-t border-gray-200 bg-white py-4">
-        <div className="container mx-auto px-4">
-          <div className="flex flex-col items-center justify-between gap-2 text-sm text-gray-500 md:flex-row md:items-start">
-            <div className="text-center md:text-left">
-              {footerPages.length > 0 ? (
-                <div className="flex flex-wrap items-center justify-center gap-2 md:justify-start">
-                  {footerPages.map((page, idx) => (
-                    <span key={page.documentId} className="flex items-center gap-2">
-                      {idx > 0 && <span className="text-gray-300">|</span>}
-                      <Link
-                        href={`/page/${page.slug}`}
-                        className="font-medium text-gray-700 transition-colors hover:text-gray-900 hover:underline"
-                      >
-                        {page.title}
-                      </Link>
-                    </span>
-                  ))}
-                </div>
-              ) : (
-                <>
-                  <Link href="/page/quy-dinh" className="transition-colors hover:text-gray-700">Quy dinh</Link>
-                  <span className="text-gray-300">|</span>
-                  <Link href="/page/gioi-thieu" className="transition-colors hover:text-gray-700">Gioi thieu</Link>
-                  <span className="text-gray-300">|</span>
-                  <Link href="/page/lien-he" className="transition-colors hover:text-gray-700">Lien he</Link>
-                </>
-              )}
-            </div>
-            <div className="flex items-center gap-1">
-              <span>&copy; {new Date().getFullYear()} Trekky</span>
-            </div>
-          </div>
+      {footerPages.length > 0 && (
+        <div className="fixed bottom-4 right-4 z-40 hidden md:flex items-center gap-2 rounded-full border border-gray-200 bg-white/90 backdrop-blur-sm px-3 py-1.5 shadow-sm text-xs text-gray-500">
+          {footerPages.map((page, idx) => (
+            <span key={page.documentId} className="flex items-center gap-2">
+              {idx > 0 && <span className="text-gray-300">|</span>}
+              <Link
+                href={`/page/${page.slug}`}
+                className="font-medium text-gray-600 transition-colors hover:text-gray-900 hover:underline"
+              >
+                {page.title}
+              </Link>
+            </span>
+          ))}
+          <span className="text-gray-300">|</span>
+          <span>&copy; {new Date().getFullYear()} Trekky</span>
         </div>
-      </footer>
+      )}
     </>
   );
 }

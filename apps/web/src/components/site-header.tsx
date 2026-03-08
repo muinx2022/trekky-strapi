@@ -116,16 +116,17 @@ function SearchBox({ onSearch }: { onSearch: (q: string) => void }) {
         <button
           type="button"
           onClick={handleSubmit}
-          className="mr-1 flex h-7 w-7 items-center justify-center rounded-full bg-blue-600 text-white transition-colors hover:bg-blue-700"
+          className="mr-1 flex items-center gap-1 rounded-full bg-gray-500 px-3 py-1 text-xs font-medium text-white transition-colors hover:bg-gray-600"
           aria-label="Tìm kiếm"
         >
           {loading ? (
-            <svg className="animate-spin" xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+            <svg className="animate-spin" xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
               <path d="M21 12a9 9 0 1 1-6.219-8.56" />
             </svg>
           ) : (
-            <SearchIcon size={12} />
+            <SearchIcon size={11} />
           )}
+          Tìm
         </button>
       </div>
 

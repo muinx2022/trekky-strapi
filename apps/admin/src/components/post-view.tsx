@@ -144,6 +144,11 @@ export function PostView({ documentId }: PostViewProps) {
                 <p className="text-xs text-muted-foreground">
                   Author: {post.author?.username ?? "none"}
                 </p>
+                {post.aiSource?.provider && (
+                  <p className="text-xs text-muted-foreground">
+                    AI: {post.aiSource.provider} / {post.aiSource.model ?? "unknown"}
+                  </p>
+                )}
               </div>
               {post.excerpt && <p className="text-sm text-muted-foreground">{post.excerpt}</p>}
               {(post.images ?? []).length > 0 && (

@@ -11,6 +11,8 @@ import {
   Hash,
   MessageSquare,
   Users,
+  Bot,
+  Flag,
   LogOut,
   Menu,
   ChevronRight,
@@ -26,7 +28,9 @@ const menuItems = [
   { href: "/categories", label: "Categories", icon: Tag },
   { href: "/tags", label: "Tags", icon: Hash },
   { href: "/comments", label: "Comments", icon: MessageSquare },
+  { href: "/reports", label: "Reports", icon: Flag },
   { href: "/users", label: "Users", icon: Users },
+  { href: "/settings", label: "Settings", icon: Bot },
 ];
 
 const SESSION_KEY = "starter_admin_session";

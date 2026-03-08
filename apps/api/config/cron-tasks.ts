@@ -1,11 +1,11 @@
 export default {
-  autoEngage: {
+  aiAutomationHeartbeat: {
     task: async ({ strapi }) => {
-      const { autoEngage } = await import('../src/cron/auto-engage');
-      await autoEngage(strapi);
+      const { runDueAiAutomation } = await import('../src/automation/ai-automation');
+      await runDueAiAutomation(strapi);
     },
     options: {
-      rule: process.env.CRON_AUTO_ENGAGE_SCHEDULE ?? '0 */6 * * *',
+      rule: '* * * * *',
       tz: 'Asia/Ho_Chi_Minh',
     },
   },

@@ -1,3 +1,13 @@
+import {
+  checkAiProviderConnection,
+  getAiAutomationSettings,
+  runCommentAutomation,
+  runContentAutomation,
+  testCommentAutomation,
+  testContentAutomation,
+  updateAiAutomationSettings,
+} from '../../../automation/ai-automation';
+
 declare const strapi: any;
 
 function readDocumentId(ctx: any) {
@@ -457,9 +467,184 @@ export default {
     ctx.body = { data };
   },
 
+  async getAiAutomationSettings(ctx: any) {
+    const data = await getAiAutomationSettings(strapi);
+    ctx.body = { data };
+  },
+
+  async updateAiAutomationSettings(ctx: any) {
+    try {
+      const data = await updateAiAutomationSettings(strapi, ctx.request.body?.data ?? {});
+      ctx.body = { data };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to update AI automation settings';
+      return ctx.badRequest(message);
+    }
+  },
+
+  async checkAiProviderConnection(ctx: any) {
+    try {
+      const provider = String(ctx.request.body?.provider ?? '').trim();
+      const apiKey = String(ctx.request.body?.apiKey ?? '').trim();
+      const model = ctx.request.body?.model ? String(ctx.request.body.model).trim() : undefined;
+      if (!provider || !apiKey) {
+        return ctx.badRequest('provider and apiKey are required');
+      }
+      if (!['openai', 'anthropic'].includes(provider)) {
+        return ctx.badRequest('provider must be openai or anthropic');
+      }
+      const data = await checkAiProviderConnection({
+        provider: provider as 'openai' | 'anthropic',
+        apiKey,
+        model,
+      });
+      ctx.body = { data };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to check AI provider';
+      return ctx.badRequest(message);
+    }
+  },
+
+  async runAiContentCron(ctx: any) {
+    try {
+      const data = await runContentAutomation(strapi);
+      ctx.body = { data };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to run AI content cron';
+      return ctx.badRequest(message);
+    }
+  },
+
+  async runAiCommentCron(ctx: any) {
+    try {
+      const data = await runCommentAutomation(strapi);
+      ctx.body = { data };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to run AI comment cron';
+      return ctx.badRequest(message);
+    }
+  },
+
+  async testAiContent(ctx: any) {
+    try {
+      const data = await testContentAutomation(strapi);
+      ctx.body = { data };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to test AI content';
+      return ctx.badRequest(message);
+    }
+  },
+
+  async testAiComment(ctx: any) {
+    try {
+      const data = await testCommentAutomation(strapi);
+      ctx.body = { data };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to test AI comment';
+      return ctx.badRequest(message);
+    }
+  },
+
   async triggerAutoEngage(ctx: any) {
     const { autoEngage } = await import('../../../cron/auto-engage');
     await autoEngage(strapi);
     ctx.body = { message: 'autoEngage triggered successfully' };
+  },
+
+  async listReports(ctx: any) {
+    const page = Math.max(1, Number(ctx.query?.page ?? 1) || 1);
+    const pageSize = Math.min(100, Math.max(1, Number(ctx.query?.pageSize ?? 20) || 20));
+    const status = String(ctx.query?.status ?? '').trim();
+    const targetType = String(ctx.query?.targetType ?? '').trim();
+
+    const where: Record<string, unknown> = {};
+    if (status && status !== 'all') where.status = status;
+    if (targetType && targetType !== 'all') where.targetType = targetType;
+
+    const [rawReports, total] = await Promise.all([
+      strapi.db.query('api::report.report').findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        limit: pageSize,
+        offset: (page - 1) * pageSize,
+      }),
+      strapi.db.query('api::report.report').count({ where }),
+    ]);
+
+    // Fetch reporters separately (populate on plugin::users-permissions.user is unreliable)
+    const reporterIdSet = new Set<number>();
+    for (const r of rawReports as any[]) {
+      const rid = typeof r.reporter === 'object' ? r.reporter?.id : r.reporter;
+      if (rid) reporterIdSet.add(rid);
+    }
+    const reporterIds = Array.from(reporterIdSet);
+    const userRows = reporterIds.length > 0
+      ? await strapi.db.query('plugin::users-permissions.user').findMany({
+          where: { id: { $in: reporterIds } },
+          select: ['id', 'username', 'email'],
+        })
+      : [];
+    const userMap = new Map((userRows as any[]).map((u: any) => [u.id, u]));
+
+    // Fetch post title+slug for post-type targets
+    const postDocIds = [...new Set(
+      (rawReports as any[]).filter((r: any) => r.targetType === 'post').map((r: any) => r.targetDocumentId).filter(Boolean),
+    )] as string[];
+    const postRows = postDocIds.length > 0
+      ? await strapi.db.query('api::post.post').findMany({
+          where: { documentId: { $in: postDocIds }, publishedAt: { $not: null } },
+          select: ['documentId', 'title', 'slug'],
+        })
+      : [];
+    const postMap = new Map((postRows as any[]).map((p: any) => [p.documentId, p]));
+
+    const reports = (rawReports as any[]).map((r) => {
+      const reporterId = typeof r.reporter === 'object' ? r.reporter?.id : r.reporter;
+      const post = r.targetType === 'post' ? postMap.get(r.targetDocumentId) : null;
+      return {
+        ...r,
+        reporter: reporterId ? (userMap.get(reporterId) ?? null) : null,
+        targetTitle: post?.title ?? null,
+        targetSlug: post?.slug ?? null,
+      };
+    });
+
+    ctx.body = {
+      data: reports,
+      meta: {
+        pagination: {
+          page,
+          pageSize,
+          pageCount: Math.max(1, Math.ceil(total / pageSize)),
+          total,
+        },
+      },
+    };
+  },
+
+  async updateReportStatus(ctx: any) {
+    const id = Number(ctx.params?.id);
+    if (!Number.isFinite(id)) return ctx.badRequest('Invalid id');
+
+    const status = String(ctx.request.body?.status ?? '').trim();
+    if (!['pending', 'reviewed', 'dismissed'].includes(status)) {
+      return ctx.badRequest('status must be pending, reviewed, or dismissed');
+    }
+
+    const updated = await strapi.db.query('api::report.report').update({
+      where: { id },
+      data: { status },
+    });
+
+    if (!updated) return ctx.notFound('Report not found');
+    ctx.body = { data: updated };
+  },
+
+  async deleteReport(ctx: any) {
+    const id = Number(ctx.params?.id);
+    if (!Number.isFinite(id)) return ctx.badRequest('Invalid id');
+
+    await strapi.db.query('api::report.report').delete({ where: { id } });
+    ctx.body = { data: { id } };
   },
 };

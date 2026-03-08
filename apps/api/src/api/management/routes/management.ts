@@ -56,6 +56,17 @@ export default {
     { method: 'DELETE', path: '/management/users/:id', handler: 'management.deleteUser', config: adminOnly },
     { method: 'GET', path: '/management/roles', handler: 'management.listRoles', config: adminOnly },
 
+    { method: 'GET', path: '/management/settings/ai-automation', handler: 'management.getAiAutomationSettings', config: adminOnly },
+    { method: 'PUT', path: '/management/settings/ai-automation', handler: 'management.updateAiAutomationSettings', config: adminOnly },
+    { method: 'POST', path: '/management/settings/ai-automation/check-provider', handler: 'management.checkAiProviderConnection', config: adminOnly },
+    { method: 'POST', path: '/management/settings/ai-automation/test-content', handler: 'management.testAiContent', config: adminOnly },
+    { method: 'POST', path: '/management/settings/ai-automation/test-comment', handler: 'management.testAiComment', config: adminOnly },
+    { method: 'POST', path: '/management/cron/content/run', handler: 'management.runAiContentCron', config: adminOnly },
+    { method: 'POST', path: '/management/cron/comments/run', handler: 'management.runAiCommentCron', config: adminOnly },
     { method: 'POST', path: '/management/cron/auto-engage', handler: 'management.triggerAutoEngage', config: adminOnly },
+
+    { method: 'GET', path: '/management/reports', handler: 'management.listReports', config: adminOnly },
+    { method: 'PUT', path: '/management/reports/:id/status', handler: 'management.updateReportStatus', config: adminOnly },
+    { method: 'DELETE', path: '/management/reports/:id', handler: 'management.deleteReport', config: adminOnly },
   ],
 };

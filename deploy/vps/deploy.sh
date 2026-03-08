@@ -72,4 +72,6 @@ pull_with_retry
 docker compose -f "$COMPOSE_FILE" up -d --no-deps "${SERVICES[@]}"
 docker compose -f "$COMPOSE_FILE" ps "${SERVICES[@]}"
 
+echo "Pruning unused images..."
+docker image prune -af
 echo "[$(date -Iseconds)] Deploy complete"

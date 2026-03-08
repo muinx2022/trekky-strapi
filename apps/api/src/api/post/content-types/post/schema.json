@@ -48,6 +48,9 @@
       "multiple": true,
       "required": false,
       "allowedTypes": ["images", "videos"]
+    },
+    "aiSource": {
+      "type": "json"
     }
   }
 }

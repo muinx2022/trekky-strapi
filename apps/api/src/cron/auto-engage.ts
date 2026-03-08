@@ -273,21 +273,19 @@ async function generateComment(
     : null;
 
   const systemPrompt =
-    'Ban dang viet comment gia lap cho mang xa hoi bang tieng Viet. ' +
-    'Hay viet nhu nguoi dung that: ngan, tu nhien, khong formal, khong sao rong, khong emoji. ' +
-    'Chi duoc dung thong tin that su co trong input. Khong bia them boi canh, dia diem, thoi gian, nhan vat, trai nghiem hay chi tiet khong thay ro. ' +
-    'Neu input it thong tin thi phai viet than trong va ngan hon. ' +
-    'Duoc phep viet nhu mot nguoi xem that tung di qua, tung ghe, tung biet ve dia diem/chu de do, nhung chi noi rat ngan gon va doi thuong. ' +
-    'Neu nhin thay ro anh thi duoc khen nhung thu truc quan nhu bo cuc, mau sac, anh sang, goc chup, khong khi, do net, cam giac de xem. ' +
-    'Khong duoc tu mot anh ma suy dien ra ca mot hanh trinh, mot qua trinh, mot cau chuyen lon, hay y nghia qua muc.';
+    'Bạn là người dùng mạng xã hội Việt Nam đang comment vào bài của người khác. ' +
+    'Viết tự nhiên như người thật: ngắn, đời thường, không formal, không emoji. ' +
+    'Đọc kỹ tiêu đề và nội dung bài để hiểu tâm trạng, chủ đề rồi mới phản ứng. ' +
+    'Với bài cảm xúc (buồn, vui, nhớ, mệt...): hỏi thăm hoặc đồng cảm tự nhiên. ' +
+    'Với bài ảnh đẹp/địa điểm: khen trực quan hoặc hỏi chỗ đó ở đâu. ' +
+    'Với bài chia sẻ thông thường: phản ứng đúng với nội dung. ' +
+    'Chỉ trả về nội dung comment, không thêm gì khác.';
 
-  const inputConstraint = titleOnly
-    ? 'Input gan nhu chi co tieu de. Hay viet mot nhan xet rat ngan, an toan, khong bia noi dung cu the cua bai.'
-    : !hasImages && !hasVideo
-      ? 'Bai viet nay khong co anh hoac video. Khong duoc nhac den anh/video.'
-      : sparseInput
-        ? 'Input hien chi co tieu de va/hoac hinh anh, gan nhu khong co body text. Chi duoc phan ung theo nhung gi thay ro tu tieu de/hinh. Co the noi kieu "da tung ghe", "co biet cho nay", hoac khen bo cuc/anh dep neu nhin thay ro, nhung khong duoc suy dien thanh ca qua trinh hay cau chuyen phia sau.'
-        : 'Neu anh khong du ro de ket luan, hay giu nhan xet o muc chung chung thay vi doan.';
+  const inputConstraint = !hasImages && !hasVideo
+    ? 'Bài không có ảnh/video, chỉ dựa vào text.'
+    : titleOnly || sparseInput
+      ? 'Bài ít nội dung, hãy phản ứng ngắn và tự nhiên với những gì có.'
+      : '';
 
   let userContent: OpenAIInputContent[];
 
@@ -296,34 +294,26 @@ async function generateComment(
       {
         type: 'input_text',
         text:
-          `Tieu de bai viet: "${post.title}"\n` +
-          `Binh luan can tra loi: "${sanitizedParentComment.content}" - ${sanitizedParentComment.authorName}\n\n` +
-          `Rang buoc: ${inputConstraint}\n` +
-          'Viet reply dai 1-3 cau, kieu nguoi dung that dang trao doi tren mang. ' +
-          'Neu input mo ho thi giu giong vua phai. Co the noi kieu "minh cung tung ghe", "nhin bo cuc dep", "anh len mau on" neu hop input. ' +
-          'Khong tung ho, khong nang tam thanh "rat sau sac", "dam tinh lich su", "qua y nghia", va khong bien mot hinh anh thanh ca mot qua trinh neu khong co can cu. ' +
-          'Khong dong vai tac gia bai viet. Khong lap lai nguyen y nguoi truoc. Chi tra ve noi dung comment.',
+          `Bài viết: "${post.title}"\n` +
+          `Comment cần reply: "${sanitizedParentComment.content}" - ${sanitizedParentComment.authorName}\n` +
+          (inputConstraint ? `Lưu ý: ${inputConstraint}\n` : '') +
+          'Viết 1 reply ngắn tự nhiên, như đang tám trên mạng. Không lặp lại nguyên xi ý người trước.',
       },
     ];
   } else {
     const intro: OpenAIInputContent = {
       type: 'input_text',
       text:
-        `Tieu de bai viet: "${post.title}"\n` +
-        `Text trong bai: ${hasBodyText ? `"${plainPostText.slice(0, 1200)}"` : '[khong co hoac rat it]'}\n` +
-        'Duoi day la noi dung va anh dinh kem cua bai:',
+        `Bài viết: "${post.title}"\n` +
+        (hasBodyText ? `Nội dung: "${plainPostText.slice(0, 1200)}"\n` : '') +
+        (richTextBlocks.length > 0 ? 'Ảnh/nội dung đính kèm:' : ''),
     };
 
     const outro: OpenAIInputContent = {
       type: 'input_text',
       text:
-        `\n\nRang buoc: ${inputConstraint}\n` +
-        'Viet 1 comment voi tu cach nguoi doc, khong phai tac gia. ' +
-        'Comment phai dai 1-3 cau. Neu du lieu it thi van giu 1-3 cau nhung phan ung vua phai, khong phong dai. ' +
-        'Co the viet theo kieu da tung ghe qua, tung biet den noi nay, hoac khen nhung diem nhin thay ro tu anh nhu bo cuc, anh sang, mau, goc chup. ' +
-        'Khong duoc tu nhay thanh khen lon, suy ton, gan chat "lich su", "sau sac", "day thong diep", hoac noi ve ca mot hanh trinh, mot qua trinh neu input khong du can cu. ' +
-        'Khong duoc viet kieu ket bai cua tac gia nhu "cam on moi nguoi", "minh se co gang". ' +
-        'Khong dung emoji. Chi tra ve noi dung comment.',
+        (inputConstraint ? `\nLưu ý: ${inputConstraint}\n` : '\n') +
+        'Viết 1 comment 1-2 câu với tư cách người đọc. Phản ứng đúng tâm trạng/chủ đề bài.',
     };
 
     userContent =
@@ -333,13 +323,10 @@ async function generateComment(
             {
               type: 'input_text',
               text:
-                `Tieu de bai viet: "${post.title}". ` +
-                `Text trong bai: ${hasBodyText ? `"${plainPostText.slice(0, 1200)}". ` : ''}` +
-                `Rang buoc: ${inputConstraint} ` +
-                'Viet 1 comment dai 1-3 cau voi tu cach nguoi doc, khong phai tac gia. ' +
-                'Neu input mo ho thi chi nen nhan xet muc do vua phai. Co the nhac kieu da tung ghe, tung biet, hoac khen anh dep/bo cuc dep neu input cho phep. ' +
-                'Khong tung ho, khong gan y nghia lon, va khong bien mot hinh anh thanh ca mot qua trinh neu khong co can cu. ' +
-                'Khong bia them chi tiet ngoai input. Khong dung emoji. Chi tra ve noi dung comment.',
+                `Bài viết: "${post.title}". ` +
+                (hasBodyText ? `Nội dung: "${plainPostText.slice(0, 1200)}". ` : '') +
+                (inputConstraint ? `Lưu ý: ${inputConstraint} ` : '') +
+                'Viết 1 comment 1-2 câu, tự nhiên, đúng với tâm trạng/chủ đề bài.',
             },
           ];
   }
@@ -353,7 +340,7 @@ async function generateComment(
         content: userContent,
       },
     ],
-    max_output_tokens: 120,
+    max_output_tokens: 150,
   });
 
   return response.output_text.trim() || null;

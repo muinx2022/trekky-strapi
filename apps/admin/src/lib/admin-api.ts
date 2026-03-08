@@ -36,6 +36,11 @@ export type PostItem = {
   images?: MediaItem[];
   categoriesCount?: number;
   commentsCount?: number;
+  aiSource?: {
+    provider?: string;
+    model?: string;
+    generatedAt?: string;
+  } | null;
 };
 
 export type PostInput = {
@@ -174,6 +179,106 @@ export type AdminDashboardData = {
       }
     >;
   };
+};
+
+export type AiAutomationJobStatus = {
+  lastRunAt: string | null;
+  lastSuccessAt: string | null;
+  lastError: string | null;
+};
+
+export type AiContentCronSettings = AiAutomationJobStatus & {
+  enabled: boolean;
+  cron: string;
+  postsPerRun: number;
+  categoryDocumentIds: string[];
+  contentPrompt: string;
+  imageProvider: "auto" | "google" | "pexels";
+  imageCountMin: number;
+  imageCountMax: number;
+  preferredMediaMode: "body" | "gallery";
+};
+
+export type AiCommentCronSettings = AiAutomationJobStatus & {
+  enabled: boolean;
+  cron: string;
+  commentsPerRun: number;
+  allowReplies: boolean;
+  commentPrompt: string;
+};
+
+export type AiProviderSettings = {
+  enabled: boolean;
+  apiKey: string;
+  models: string[];
+};
+
+export type AiImageSearchProviderSettings = {
+  enabled: boolean;
+  apiKey: string;
+  searchEngineId?: string;
+};
+
+export type AiAutomationSettings = {
+  timezone: string;
+  content: AiContentCronSettings;
+  comments: AiCommentCronSettings;
+  providers: {
+    openai: AiProviderSettings;
+    anthropic: AiProviderSettings;
+  };
+  imageSearch: {
+    google: AiImageSearchProviderSettings;
+    pexels: AiImageSearchProviderSettings;
+  };
+};
+
+export type AiAutomationRunResult = {
+  job: "content" | "comments";
+  createdPosts?: number;
+  uploadedImages?: number;
+  embeddedBodyImages?: number;
+  galleryImages?: number;
+  createdComments?: number;
+  skipped: number;
+  errors: string[];
+};
+
+export type AiContentAutomationTestResult = {
+  job: "content";
+  provider: "openai" | "anthropic";
+  model: string;
+  category: {
+    documentId: string;
+    name: string;
+    slug: string;
+  };
+  images: Array<{
+    provider: "google" | "pexels";
+    url: string;
+    alt?: string;
+  }>;
+  preview: {
+    title: string;
+    excerpt: string;
+    bodyText: string;
+    imageSearchQueries: string[];
+    relatedTags: string[];
+    mediaMode: "body" | "gallery";
+  };
+  warnings: string[];
+};
+
+export type AiCommentAutomationTestResult = {
+  job: "comments";
+  provider: "openai" | "anthropic";
+  model: string;
+  post: {
+    documentId: string;
+    title: string;
+  };
+  replyMode: "top-level" | "reply";
+  preview: string;
 };
 
 type ApiResponse<T> = { data: T } | T;
@@ -782,7 +887,110 @@ export async function getAdminDashboard() {
   return toItem<AdminDashboardData>(payload);
 }
 
+export async function getAiAutomationSettings() {
+  const payload = await request<ApiResponse<AiAutomationSettings>>("/api/management/settings/ai-automation");
+  return toItem<AiAutomationSettings>(payload);
+}
+
+export async function updateAiAutomationSettings(input: Partial<AiAutomationSettings>) {
+  const payload = await request<ApiResponse<AiAutomationSettings>>("/api/management/settings/ai-automation", {
+    method: "PUT",
+    body: JSON.stringify({ data: input }),
+  });
+  return toItem<AiAutomationSettings>(payload);
+}
+
+export async function runAiContentCron() {
+  const payload = await request<ApiResponse<AiAutomationRunResult>>("/api/management/cron/content/run", {
+    method: "POST",
+  });
+  return toItem<AiAutomationRunResult>(payload);
+}
+
+export async function runAiCommentCron() {
+  const payload = await request<ApiResponse<AiAutomationRunResult>>("/api/management/cron/comments/run", {
+    method: "POST",
+  });
+  return toItem<AiAutomationRunResult>(payload);
+}
+
+export async function checkAiProviderConnection(input: {
+  provider: "openai" | "anthropic";
+  apiKey: string;
+  model?: string;
+}) {
+  const payload = await request<ApiResponse<{ ok: boolean; provider: string; model: string; message: string }>>(
+    "/api/management/settings/ai-automation/check-provider",
+    {
+      method: "POST",
+      body: JSON.stringify(input),
+    },
+  );
+  return toItem(payload);
+}
+
+export async function testAiContent() {
+  const payload = await request<ApiResponse<AiContentAutomationTestResult>>(
+    "/api/management/settings/ai-automation/test-content",
+    {
+      method: "POST",
+    },
+  );
+  return toItem(payload);
+}
+
+export async function testAiComment() {
+  const payload = await request<ApiResponse<AiCommentAutomationTestResult>>(
+    "/api/management/settings/ai-automation/test-comment",
+    {
+      method: "POST",
+    },
+  );
+  return toItem(payload);
+}
+
 export async function triggerAutoEngage() {
   return request<{ message: string }>("/api/management/cron/auto-engage", { method: "POST" });
 }
 
+export type ReportStatus = "pending" | "reviewed" | "dismissed";
+
+export type ReportItem = {
+  id: number;
+  targetType: string;
+  targetDocumentId: string;
+  targetTitle?: string | null;
+  targetSlug?: string | null;
+  reason?: string | null;
+  status: ReportStatus;
+  reporter?: { id: number; username: string; email: string } | null;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
+export async function listReports(
+  page = DEFAULT_PAGE,
+  pageSize = DEFAULT_PAGE_SIZE,
+  filters?: { status?: "all" | ReportStatus; targetType?: string },
+) {
+  const query = new URLSearchParams({
+    page: String(page),
+    pageSize: String(pageSize),
+    ...(filters?.status && filters.status !== "all" ? { status: filters.status } : {}),
+    ...(filters?.targetType && filters.targetType !== "all" ? { targetType: filters.targetType } : {}),
+  });
+  const payload = await request(`/api/management/reports?${query.toString()}`);
+  return toPaginated<ReportItem>(payload, page, pageSize);
+}
+
+export async function updateReportStatus(id: number, status: ReportStatus) {
+  const payload = await request<ApiResponse<ReportItem>>(`/api/management/reports/${id}/status`, {
+    method: "PUT",
+    body: JSON.stringify({ status }),
+  });
+  return toItem<ReportItem>(payload);
+}
+
+export async function deleteReport(id: number) {
+  await request(`/api/management/reports/${id}`, { method: "DELETE" });
+}
