@@ -282,7 +282,12 @@ export function UsersManager() {
                   />
                 )}
                 <div>
-                  <p className="font-medium">{item.username}</p>
+                  <Link
+                    href={`/users/${item.id}/edit`}
+                    className="font-medium text-foreground transition-colors hover:text-primary hover:underline"
+                  >
+                    {item.username}
+                  </Link>
                   <p className="text-sm text-muted-foreground">
                     role: {item.role?.name ?? "none"} | blocked: {String(item.blocked)}
                   </p>

@@ -83,7 +83,12 @@ function CategoryRow({
           <GripVertical className="h-4 w-4" />
         </div>
         <div>
-          <p className="font-medium">{item.name}</p>
+          <Link
+            href={`/categories/${item.documentId}/edit`}
+            className="font-medium text-foreground transition-colors hover:text-primary hover:underline"
+          >
+            {item.name}
+          </Link>
           {item.description && (
             <p className="line-clamp-2 text-xs text-muted-foreground">{toPlainText(item.description)}</p>
           )}

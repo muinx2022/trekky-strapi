@@ -195,7 +195,14 @@ export function CommentsManager() {
               <TableRow key={item.documentId} className="group">
                 <TableCell>{item.id}</TableCell>
                 <TableCell className="capitalize">{item.targetType}</TableCell>
-                <TableCell>{item.targetTitle ?? item.targetDocumentId}</TableCell>
+                <TableCell>
+                  <Link
+                    href={`/comments/${item.documentId}/edit`}
+                    className="text-foreground transition-colors hover:text-primary hover:underline"
+                  >
+                    {item.targetTitle ?? item.targetDocumentId}
+                  </Link>
+                </TableCell>
                 <TableCell>
                   <div>
                     <p className="font-medium">{item.authorName}</p>

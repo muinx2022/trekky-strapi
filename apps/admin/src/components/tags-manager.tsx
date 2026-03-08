@@ -218,7 +218,14 @@ export function TagsManager() {
             <tbody>
               {rows.map((item) => (
                 <tr key={item.documentId} className="group border-t">
-                  <td className="px-3 py-2 font-medium">{item.name}</td>
+                  <td className="px-3 py-2 font-medium">
+                    <Link
+                      href={`/tags/${item.documentId}/edit`}
+                      className="text-foreground transition-colors hover:text-primary hover:underline"
+                    >
+                      {item.name}
+                    </Link>
+                  </td>
                   <td className="px-3 py-2 text-muted-foreground">{item.slug}</td>
                   <td className="px-3 py-2">
                     <span className="text-muted-foreground">

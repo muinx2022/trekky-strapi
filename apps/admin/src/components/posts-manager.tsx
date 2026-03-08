@@ -264,7 +264,12 @@ export function PostsManager() {
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <p className="text-xs uppercase tracking-wide text-muted-foreground">Post #{item.id}</p>
-                    <p className="mt-1 line-clamp-2 font-semibold">{item.title}</p>
+                    <Link
+                      href={`/posts/${item.documentId}/edit`}
+                      className="mt-1 line-clamp-2 font-semibold text-foreground transition-colors hover:text-primary hover:underline"
+                    >
+                      {item.title}
+                    </Link>
                     <p className="mt-1 break-all text-xs text-muted-foreground">{item.slug}</p>
                   </div>
                   <button
@@ -359,7 +364,12 @@ export function PostsManager() {
                   <TableCell>{item.id}</TableCell>
                   <TableCell>
                     <div>
-                      <p className="font-medium">{item.title}</p>
+                      <Link
+                        href={`/posts/${item.documentId}/edit`}
+                        className="font-medium text-foreground transition-colors hover:text-primary hover:underline"
+                      >
+                        {item.title}
+                      </Link>
                       <p className="text-xs text-muted-foreground">{item.slug}</p>
                     </div>
                   </TableCell>
