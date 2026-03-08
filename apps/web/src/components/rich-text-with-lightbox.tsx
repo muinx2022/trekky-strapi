@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Lightbox, type LightboxImage } from "./lightbox";
+import { normalizeMediaUrlsInHtml } from "@/lib/seo";
 
 type LightboxState = { images: LightboxImage[]; index: number } | null;
 
@@ -13,6 +14,7 @@ type Props = {
 export function RichTextWithLightbox({ html, className }: Props) {
   const ref = useRef<HTMLDivElement>(null);
   const [lightbox, setLightbox] = useState<LightboxState>(null);
+  const normalizedHtml = normalizeMediaUrlsInHtml(html);
 
   useEffect(() => {
     if (!ref.current) return;
@@ -31,11 +33,11 @@ export function RichTextWithLightbox({ html, className }: Props) {
     });
 
     return () => cleanup.forEach((fn) => fn());
-  }, [html]);
+  }, [normalizedHtml]);
 
   return (
     <>
-      <div ref={ref} className={className} dangerouslySetInnerHTML={{ __html: html }} />
+      <div ref={ref} className={className} dangerouslySetInnerHTML={{ __html: normalizedHtml }} />
       {lightbox && (
         <Lightbox
           images={lightbox.images}

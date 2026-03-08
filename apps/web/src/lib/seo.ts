@@ -32,7 +32,20 @@ export function absoluteUrl(path: string) {
 export function toAbsoluteMediaUrl(url?: string | null): string | undefined {
   if (!url) return undefined;
   if (url.startsWith("http")) return url;
+  if (!url.startsWith("/uploads/")) return url;
   return `${API_URL}${url}`;
+}
+
+export function normalizeMediaUrlsInHtml(html: string): string {
+  if (!html) return html;
+
+  return html.replace(
+    /\b(src|poster)=["']([^"']+)["']/gi,
+    (_match, attr: string, value: string) => {
+      const absolute = toAbsoluteMediaUrl(value) ?? value;
+      return `${attr}="${absolute}"`;
+    },
+  );
 }
 
 /** Strip HTML tags and collapse whitespace. */
