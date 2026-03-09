@@ -10,9 +10,8 @@ import {
   FileText,
   MessageSquare,
   Tag,
-  Zap,
 } from "lucide-react";
-import { type ElementType, useState } from "react";
+import { type ElementType } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -25,7 +24,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { createAdminDataProvider } from "@/lib/refine-admin-provider";
-import { getAdminDashboard, triggerAutoEngage, type AdminDashboardData } from "@/lib/admin-api";
+import { getAdminDashboard, type AdminDashboardData } from "@/lib/admin-api";
 
 const queryClient = new QueryClient();
 const adminDataProvider = createAdminDataProvider();
@@ -146,26 +145,10 @@ function ContentOverview({ data, isError }: { data: AdminDashboardData | undefin
 }
 
 function ResourceOverview() {
-  const [engaging, setEngaging] = useState(false);
-  const [engageMsg, setEngageMsg] = useState<{ ok: boolean; text: string } | null>(null);
-
   const dashboard = useQuery({
     queryKey: ["admin-dashboard"],
     queryFn: getAdminDashboard,
   });
-
-  async function handleAutoEngage() {
-    setEngaging(true);
-    setEngageMsg(null);
-    try {
-      const res = await triggerAutoEngage();
-      setEngageMsg({ ok: true, text: res.message });
-    } catch (err) {
-      setEngageMsg({ ok: false, text: err instanceof Error ? err.message : "Failed" });
-    } finally {
-      setEngaging(false);
-    }
-  }
 
   return (
     <div className="space-y-6">
@@ -184,46 +167,29 @@ function ResourceOverview() {
                 </p>
               </div>
             </div>
-
-            <div className="flex flex-col items-start gap-3 lg:items-end">
-              <a href={GA_URL} target="_blank" rel="noreferrer">
-                <Button className="gap-2">
-                  <ExternalLink className="h-4 w-4" />
-                  Open Google Analytics
-                </Button>
-              </a>
-              <Button size="sm" variant="outline" onClick={handleAutoEngage} disabled={engaging}>
-                <Zap className="mr-1 h-3.5 w-3.5" />
-                {engaging ? "Running..." : "Auto Engage"}
-              </Button>
-              {engageMsg && (
-                <div className={`text-xs ${engageMsg.ok ? "text-green-600" : "text-destructive"}`}>
-                  {engageMsg.text}
-                </div>
-              )}
-            </div>
           </div>
-
-          <Card className="border-border/70 bg-background/70 py-4">
-            <CardContent className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-              <div>
-                <p className="font-medium">Analytics report</p>
-                <p className="text-sm text-muted-foreground">
-                  Opens the GA property dashboard for Trekky in a new tab.
-                </p>
-              </div>
-              <a href={GA_URL} target="_blank" rel="noreferrer">
-                <Button variant="outline" className="gap-2">
-                  Open report
-                  <ArrowRight className="h-4 w-4" />
-                </Button>
-              </a>
-            </CardContent>
-          </Card>
         </div>
       </section>
 
       <ContentOverview data={dashboard.data} isError={dashboard.isError} />
+
+      <Card className="border-border/70 bg-background/70 py-4">
+        <CardContent className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div>
+            <p className="font-medium">Analytics report</p>
+            <p className="text-sm text-muted-foreground">
+              Opens the Google Analytics dashboard for Trekky in a new tab.
+            </p>
+          </div>
+          <a href={GA_URL} target="_blank" rel="noreferrer">
+            <Button variant="outline" className="gap-2">
+              Open Google Analytics
+              <ExternalLink className="h-4 w-4" />
+              <ArrowRight className="h-4 w-4" />
+            </Button>
+          </a>
+        </CardContent>
+      </Card>
     </div>
   );
 }
