@@ -5,7 +5,6 @@ import routerProvider from "@refinedev/nextjs-router";
 import { QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-query";
 import {
   ArrowRight,
-  BarChart3,
   ExternalLink,
   FileText,
   MessageSquare,
@@ -155,11 +154,7 @@ function ResourceOverview() {
       <section className="overflow-hidden rounded-[28px] border border-border/70 bg-gradient-to-br from-primary/[0.08] via-background to-background shadow-sm">
         <div className="flex flex-col gap-6 px-6 py-6 lg:px-8">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-            <div className="max-w-2xl space-y-3">
-              <Badge variant="outline" className="rounded-full border-primary/20 bg-primary/5 px-3 py-1 text-primary">
-                <BarChart3 className="h-3.5 w-3.5" />
-                Google Analytics
-              </Badge>
+            <div className="max-w-2xl">
               <div>
                 <h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1>
                 <p className="mt-2 text-sm text-muted-foreground">
