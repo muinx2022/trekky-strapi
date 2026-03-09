@@ -236,6 +236,45 @@ export type AiAutomationSettings = {
   };
 };
 
+export type AnalyticsRange = "7d" | "30d" | "90d";
+
+export type AdminAnalyticsTimeseriesPoint = {
+  date: string;
+  users: number;
+  views: number;
+};
+
+export type AdminAnalyticsTopPage = {
+  path: string;
+  title: string;
+  targetType: "post" | "page" | "other";
+  targetDocumentId: string | null;
+  views: number;
+  users: number;
+};
+
+export type AdminAnalyticsOverview = {
+  range: AnalyticsRange;
+  generatedAt: string;
+  summary: {
+    users: number;
+    sessions: number;
+    views: number;
+  };
+  series: AdminAnalyticsTimeseriesPoint[];
+  topPages: AdminAnalyticsTopPage[];
+};
+
+export type Ga4AnalyticsSettings = {
+  propertyId: string;
+  clientId: string;
+  clientSecret: string;
+  configured: boolean;
+  connected: boolean;
+  connectedAt: string | null;
+  connectedEmail: string | null;
+};
+
 export type AiAutomationRunResult = {
   job: "content" | "comments";
   createdPosts?: number;
@@ -884,6 +923,44 @@ export async function batchDeleteSeedUsers(ids: number[]) {
 export async function getAdminDashboard() {
   const payload = await request<ApiResponse<AdminDashboardData>>("/api/management/dashboard");
   return toItem<AdminDashboardData>(payload);
+}
+
+export async function getAdminAnalyticsOverview(range: AnalyticsRange = "7d") {
+  const query = new URLSearchParams({ range });
+  const payload = await request<ApiResponse<AdminAnalyticsOverview>>(
+    `/api/management/analytics/overview?${query.toString()}`,
+  );
+  return toItem<AdminAnalyticsOverview>(payload);
+}
+
+export async function getGa4AnalyticsSettings() {
+  const payload = await request<ApiResponse<Ga4AnalyticsSettings>>("/api/management/settings/ga4-analytics");
+  return toItem<Ga4AnalyticsSettings>(payload);
+}
+
+export async function updateGa4AnalyticsSettings(input: {
+  propertyId?: string;
+  clientId?: string;
+  clientSecret?: string;
+}) {
+  const payload = await request<ApiResponse<Ga4AnalyticsSettings>>("/api/management/settings/ga4-analytics", {
+    method: "PUT",
+    body: JSON.stringify({ data: input }),
+  });
+  return toItem<Ga4AnalyticsSettings>(payload);
+}
+
+export async function disconnectGa4Analytics() {
+  const payload = await request<ApiResponse<Ga4AnalyticsSettings>>("/api/management/settings/ga4-analytics/disconnect", {
+    method: "POST",
+  });
+  return toItem<Ga4AnalyticsSettings>(payload);
+}
+
+export async function getGa4OauthUrl(returnTo: string) {
+  const query = new URLSearchParams({ returnTo });
+  const payload = await request<ApiResponse<{ url: string }>>(`/api/management/google/ga4/auth-url?${query.toString()}`);
+  return toItem(payload);
 }
 
 export async function getAiAutomationSettings() {

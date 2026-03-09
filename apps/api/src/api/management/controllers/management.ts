@@ -7,6 +7,14 @@ import {
   testContentAutomation,
   updateAiAutomationSettings,
 } from '../../../automation/ai-automation';
+import {
+  createGa4OauthUrl as createGa4OauthUrlService,
+  disconnectGa4Analytics as disconnectGa4AnalyticsService,
+  getAnalyticsOverview,
+  getGa4AnalyticsSettings as getGa4AnalyticsSettingsService,
+  handleGa4OauthCallback as handleGa4OauthCallbackService,
+  updateGa4AnalyticsSettings as updateGa4AnalyticsSettingsService,
+} from '../../../services/ga4-analytics';
 
 declare const strapi: any;
 
@@ -447,6 +455,72 @@ export default {
     const service = strapi.service('api::admin-dashboard.admin-dashboard') as any;
     const data = await service.overview();
     ctx.body = { data };
+  },
+
+  async analyticsOverview(ctx: any) {
+    try {
+      const range = String(ctx.query?.range ?? '7d').trim() || '7d';
+      const data = await getAnalyticsOverview(strapi, range);
+      ctx.body = { data };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to load analytics overview';
+      return ctx.badRequest(message);
+    }
+  },
+
+  async getGa4AnalyticsSettings(ctx: any) {
+    const data = await getGa4AnalyticsSettingsService(strapi);
+    ctx.body = { data };
+  },
+
+  async updateGa4AnalyticsSettings(ctx: any) {
+    try {
+      const data = await updateGa4AnalyticsSettingsService(strapi, ctx.request.body?.data ?? {});
+      ctx.body = { data };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to update GA4 settings';
+      return ctx.badRequest(message);
+    }
+  },
+
+  async disconnectGa4Analytics(ctx: any) {
+    const data = await disconnectGa4AnalyticsService(strapi);
+    ctx.body = { data };
+  },
+
+  async createGa4OauthUrl(ctx: any) {
+    try {
+      const returnTo = String(ctx.query?.returnTo ?? '').trim();
+      const data = await createGa4OauthUrlService(strapi, ctx.request.href, returnTo);
+      ctx.body = { data };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to create GA4 OAuth URL';
+      return ctx.badRequest(message);
+    }
+  },
+
+  async ga4OauthCallback(ctx: any) {
+    try {
+      const code = String(ctx.query?.code ?? '').trim();
+      const state = String(ctx.query?.state ?? '').trim();
+      if (!code || !state) {
+        return ctx.badRequest('Missing code or state');
+      }
+
+      const { returnTo } = await handleGa4OauthCallbackService(strapi, ctx.request.href, code, state);
+      return ctx.redirect(returnTo || '/dashboard');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to complete GA4 OAuth callback';
+      ctx.status = 400;
+      ctx.body = `
+        <html>
+          <body style="font-family: sans-serif; padding: 24px;">
+            <h1>Google Analytics connection failed</h1>
+            <p>${message}</p>
+          </body>
+        </html>
+      `;
+    }
   },
 
   async getAiAutomationSettings(ctx: any) {

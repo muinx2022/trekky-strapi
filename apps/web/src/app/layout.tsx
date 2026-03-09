@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/components/auth-context";
+import { GoogleAnalytics } from "@/components/google-analytics";
 import { SiteShell } from "@/components/site-shell";
 import {
   DEFAULT_OG_IMAGE,
@@ -12,6 +13,8 @@ import {
   SITE_URL,
   TWITTER_HANDLE,
 } from "@/lib/seo";
+
+const gaMeasurementId = process.env.NEXT_PUBLIC_GA4_MEASUREMENT_ID ?? "";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -92,6 +95,7 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} min-h-screen bg-gray-100 antialiased flex flex-col`}
       >
+        <GoogleAnalytics measurementId={gaMeasurementId} />
         <AuthProvider>
           <SiteShell>{children}</SiteShell>
         </AuthProvider>

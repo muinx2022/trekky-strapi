@@ -6,6 +6,12 @@ const adminOnly = {
 export default {
   routes: [
     { method: 'GET', path: '/management/dashboard', handler: 'management.dashboard', config: adminOnly },
+    { method: 'GET', path: '/management/analytics/overview', handler: 'management.analyticsOverview', config: adminOnly },
+    { method: 'GET', path: '/management/settings/ga4-analytics', handler: 'management.getGa4AnalyticsSettings', config: adminOnly },
+    { method: 'PUT', path: '/management/settings/ga4-analytics', handler: 'management.updateGa4AnalyticsSettings', config: adminOnly },
+    { method: 'POST', path: '/management/settings/ga4-analytics/disconnect', handler: 'management.disconnectGa4Analytics', config: adminOnly },
+    { method: 'GET', path: '/management/google/ga4/auth-url', handler: 'management.createGa4OauthUrl', config: adminOnly },
+    { method: 'GET', path: '/management/google/ga4/callback', handler: 'management.ga4OauthCallback', config: { auth: false } },
 
     { method: 'GET', path: '/management/posts', handler: 'management.listPosts', config: adminOnly },
     { method: 'GET', path: '/management/posts/:documentId', handler: 'management.findPost', config: adminOnly },
