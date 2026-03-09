@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { SITE_URL } from "@/lib/seo";
+import { SITE_URL, sanitizeRichHtml } from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
 
@@ -130,7 +130,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
                   {post.excerpt && (
                     <div
                       className="mt-1 line-clamp-2 text-sm text-zinc-500 [&_p]:inline"
-                      dangerouslySetInnerHTML={{ __html: post.excerpt }}
+                      dangerouslySetInnerHTML={{ __html: sanitizeRichHtml(post.excerpt) }}
                     />
                   )}
                 </Link>

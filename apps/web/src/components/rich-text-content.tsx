@@ -1,4 +1,4 @@
-import { normalizeMediaUrlsInHtml } from "@/lib/seo";
+import { sanitizeRichHtml } from "@/lib/seo";
 
 type RichTextContentProps = {
   html: string;
@@ -6,5 +6,5 @@ type RichTextContentProps = {
 };
 
 export function RichTextContent({ html, className }: RichTextContentProps) {
-  return <div className={className} dangerouslySetInnerHTML={{ __html: normalizeMediaUrlsInHtml(html) }} />;
+  return <div className={className} dangerouslySetInnerHTML={{ __html: sanitizeRichHtml(html) }} />;
 }

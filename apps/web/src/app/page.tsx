@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { InfinitePosts } from "@/components/infinite-posts";
 import { getPageByType, getPostsWithPagination } from "@/lib/strapi";
-import { SITE_DESCRIPTION, SITE_NAME, SITE_TITLE, SITE_URL, stripHtml, truncate } from "@/lib/seo";
+import { SITE_DESCRIPTION, SITE_NAME, SITE_TITLE, SITE_URL, sanitizeRichHtml, stripHtml, truncate } from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
 
@@ -65,7 +65,7 @@ export default async function HomePage() {
           {homePage.content && (
             <div
               className="prose prose-sm mt-3 max-w-none text-gray-700 dark:text-gray-300"
-              dangerouslySetInnerHTML={{ __html: homePage.content }}
+              dangerouslySetInnerHTML={{ __html: sanitizeRichHtml(homePage.content) }}
             />
           )}
         </section>

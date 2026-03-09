@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/auth-context";
 import { PostForm } from "@/components/post-form";
@@ -8,11 +8,11 @@ import { PostForm } from "@/components/post-form";
 export default function NewMyPostPage() {
   const router = useRouter();
   const { isLoggedIn, jwt, openLoginModal } = useAuth();
-  const [isHydrated, setIsHydrated] = useState(false);
-
-  useEffect(() => {
-    setIsHydrated(true);
-  }, []);
+  const isHydrated = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false,
+  );
 
   useEffect(() => {
     if (!isHydrated) return;

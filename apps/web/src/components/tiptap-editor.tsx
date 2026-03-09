@@ -288,7 +288,7 @@ export function TiptapEditor({ value, onChange, showToolbar, onMediaPicked }: Ti
                       <circle cx="9" cy="9" r="2" />
                       <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" />
                     </svg>
-                    Chon tu thiet bi
+                    Chọn từ thiết bị
                   </button>
                   <button
                     type="button"
@@ -300,7 +300,7 @@ export function TiptapEditor({ value, onChange, showToolbar, onMediaPicked }: Ti
                     className="hidden w-full items-center gap-2 px-3 py-2 text-xs text-zinc-700 hover:bg-zinc-100 dark:text-zinc-200 dark:hover:bg-zinc-800 md:flex"
                   >
                     <Camera size={13} />
-                    Dung may anh
+                    Dùng máy ảnh
                   </button>
                 </div>
               )}
@@ -407,7 +407,7 @@ export function TiptapEditor({ value, onChange, showToolbar, onMediaPicked }: Ti
             <div className="mb-3 flex items-center justify-between">
               <div>
                 <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Chen anh</p>
-                <p className="text-xs text-zinc-500 dark:text-zinc-400">Chon cach them anh vao noi dung</p>
+                <p className="text-xs text-zinc-500 dark:text-zinc-400">Chọn cách thêm ảnh vào nội dung</p>
               </div>
               <button
                 type="button"
@@ -429,8 +429,8 @@ export function TiptapEditor({ value, onChange, showToolbar, onMediaPicked }: Ti
                   <Images size={20} />
                 </span>
                 <span>
-                  <span className="block text-sm font-medium text-zinc-900 dark:text-zinc-100">Chon tu thu vien</span>
-                  <span className="block text-xs text-zinc-500 dark:text-zinc-400">Mo anh co san tren thiet bi</span>
+                  <span className="block text-sm font-medium text-zinc-900 dark:text-zinc-100">Chọn từ thư viện</span>
+                  <span className="block text-xs text-zinc-500 dark:text-zinc-400">Mở ảnh có sẵn trên thiết bị</span>
                 </span>
               </button>
 
@@ -443,8 +443,8 @@ export function TiptapEditor({ value, onChange, showToolbar, onMediaPicked }: Ti
                   <Camera size={20} />
                 </span>
                 <span>
-                  <span className="block text-sm font-medium text-zinc-900 dark:text-zinc-100">Dung may anh</span>
-                  <span className="block text-xs text-zinc-500 dark:text-zinc-400">Chup anh moi roi chen vao bai</span>
+                  <span className="block text-sm font-medium text-zinc-900 dark:text-zinc-100">Dùng máy ảnh</span>
+                  <span className="block text-xs text-zinc-500 dark:text-zinc-400">Chụp ảnh mới rồi chèn vào bài</span>
                 </span>
               </button>
             </div>
@@ -454,7 +454,7 @@ export function TiptapEditor({ value, onChange, showToolbar, onMediaPicked }: Ti
               onClick={() => setImageModalOpen(false)}
               className="mt-4 w-full rounded-xl bg-zinc-100 px-4 py-3 text-sm font-medium text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700"
             >
-              Huy
+              Hủy
             </button>
           </div>
         </div>

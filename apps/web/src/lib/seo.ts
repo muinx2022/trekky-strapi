@@ -1,3 +1,5 @@
+import sanitizeHtml from "sanitize-html";
+
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://trekky.net";
 const API_URL =
   process.env.NEXT_PUBLIC_API_URL ??
@@ -46,6 +48,77 @@ export function normalizeMediaUrlsInHtml(html: string): string {
       return `${attr}="${absolute}"`;
     },
   );
+}
+
+const SANITIZE_OPTIONS: sanitizeHtml.IOptions = {
+  allowedTags: [
+    "a",
+    "b",
+    "blockquote",
+    "br",
+    "code",
+    "em",
+    "figcaption",
+    "figure",
+    "h1",
+    "h2",
+    "h3",
+    "h4",
+    "h5",
+    "h6",
+    "hr",
+    "i",
+    "iframe",
+    "img",
+    "li",
+    "ol",
+    "p",
+    "pre",
+    "s",
+    "source",
+    "span",
+    "strong",
+    "sub",
+    "sup",
+    "u",
+    "ul",
+    "video",
+  ],
+  allowedAttributes: {
+    a: ["href", "name", "target", "rel"],
+    iframe: [
+      "allow",
+      "allowfullscreen",
+      "frameborder",
+      "height",
+      "referrerpolicy",
+      "src",
+      "title",
+      "width",
+    ],
+    img: ["alt", "height", "src", "title", "width"],
+    source: ["src", "type"],
+    video: ["controls", "height", "playsinline", "poster", "preload", "src", "width"],
+    "*": ["class"],
+  },
+  allowedSchemes: ["http", "https", "mailto", "tel"],
+  allowedSchemesByTag: {
+    img: ["http", "https", "data"],
+  },
+  allowedIframeHostnames: ["www.youtube.com", "youtube.com", "www.youtube-nocookie.com", "youtube-nocookie.com"],
+  allowedIframeDomains: ["youtube.com", "youtube-nocookie.com"],
+  parser: {
+    lowerCaseTags: true,
+  },
+};
+
+export function sanitizeRichHtml(html: string): string {
+  if (!html) {
+    return html;
+  }
+
+  const sanitized = sanitizeHtml(html, SANITIZE_OPTIONS);
+  return normalizeMediaUrlsInHtml(sanitized);
 }
 
 /** Strip HTML tags and collapse whitespace. */

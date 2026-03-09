@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useAuth } from "./auth-context";
 
 type Props = {
@@ -19,61 +19,100 @@ const REPORT_CATEGORIES = [
 
 const lsKey = (type: string, docId: string) => `reported:${type}:${docId}`;
 
+function readReportedFlag(targetType: string, targetDocumentId: string) {
+  if (typeof window === "undefined") {
+    return false;
+  }
+
+  try {
+    return Boolean(localStorage.getItem(lsKey(targetType, targetDocumentId)));
+  } catch {
+    return false;
+  }
+}
+
 export function ReportDialog({ targetType, targetDocumentId }: Props) {
   const { isLoggedIn, jwt, openLoginModal } = useAuth();
+  const reportKey = lsKey(targetType, targetDocumentId);
   const [open, setOpen] = useState(false);
   const [category, setCategory] = useState("");
   const [reason, setReason] = useState("");
-  const [alreadyReported, setAlreadyReported] = useState(false);
+  const [serverReported, setServerReported] = useState<{ key: string; value: boolean }>({
+    key: "",
+    value: false,
+  });
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const backdropRef = useRef<HTMLDivElement>(null);
   const checkedRef = useRef(false);
+  const localReported = useSyncExternalStore(
+    () => () => {},
+    () => readReportedFlag(targetType, targetDocumentId),
+    () => false,
+  );
+  const alreadyReported = localReported || (serverReported.key === reportKey && serverReported.value);
 
-  // Check localStorage first (instant, survives F5)
   useEffect(() => {
-    try {
-      if (localStorage.getItem(lsKey(targetType, targetDocumentId))) {
-        setAlreadyReported(true);
-      }
-    } catch {/* ignore */}
-  }, [targetType, targetDocumentId]);
+    checkedRef.current = false;
+  }, [reportKey]);
 
-  // Then verify with server when logged in
   useEffect(() => {
     if (!isLoggedIn || !jwt || checkedRef.current) return;
+
     checkedRef.current = true;
     fetch(
       `/api/report-proxy?targetType=${encodeURIComponent(targetType)}&targetDocumentId=${encodeURIComponent(targetDocumentId)}`,
       { headers: { Authorization: `Bearer ${jwt}` } },
     )
-      .then((r) => r.ok ? r.json() : null)
+      .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
         if (data?.data?.reported) {
-          setAlreadyReported(true);
-          try { localStorage.setItem(lsKey(targetType, targetDocumentId), "1"); } catch {/* ignore */}
+          setServerReported({ key: reportKey, value: true });
+          try {
+            localStorage.setItem(reportKey, "1");
+          } catch {
+            // ignore
+          }
         }
       })
-      .catch(() => {/* ignore */});
-  }, [isLoggedIn, jwt, targetType, targetDocumentId]);
-
-  useEffect(() => {
-    if (open) return;
-    setCategory("");
-    setReason("");
-    setStatus("idle");
-  }, [open]);
+      .catch(() => {
+        // ignore
+      });
+  }, [isLoggedIn, jwt, reportKey, targetType, targetDocumentId]);
 
   useEffect(() => {
     if (!open) return;
-    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false); };
+
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
   }, [open]);
 
+  const resetDialogState = () => {
+    setCategory("");
+    setReason("");
+    setStatus("idle");
+  };
+
   const handleOpen = () => {
-    if (!isLoggedIn || !jwt) { openLoginModal(); return; }
-    if (alreadyReported) return;
+    if (!isLoggedIn || !jwt) {
+      openLoginModal();
+      return;
+    }
+
+    if (alreadyReported) {
+      return;
+    }
+
+    resetDialogState();
     setOpen(true);
+  };
+
+  const handleClose = () => {
+    setOpen(false);
+    resetDialogState();
   };
 
   const handleSubmit = async () => {
@@ -81,9 +120,7 @@ export function ReportDialog({ targetType, targetDocumentId }: Props) {
     setStatus("loading");
 
     const categoryLabel = REPORT_CATEGORIES.find((c) => c.value === category)?.label ?? category;
-    const fullReason = reason.trim()
-      ? `[${categoryLabel}] ${reason.trim()}`
-      : `[${categoryLabel}]`;
+    const fullReason = reason.trim() ? `[${categoryLabel}] ${reason.trim()}` : `[${categoryLabel}]`;
 
     try {
       const res = await fetch("/api/report-proxy", {
@@ -95,15 +132,24 @@ export function ReportDialog({ targetType, targetDocumentId }: Props) {
         body: JSON.stringify({ targetType, targetDocumentId, reason: fullReason }),
       });
       const data = await res.json();
+
       if (data?.data?.alreadyReported) {
-        setAlreadyReported(true);
-        try { localStorage.setItem(lsKey(targetType, targetDocumentId), "1"); } catch {/* ignore */}
-        setOpen(false);
+        setServerReported({ key: reportKey, value: true });
+        try {
+          localStorage.setItem(reportKey, "1");
+        } catch {
+          // ignore
+        }
+        handleClose();
       } else if (res.ok) {
         setStatus("success");
-        setAlreadyReported(true);
-        try { localStorage.setItem(lsKey(targetType, targetDocumentId), "1"); } catch {/* ignore */}
-        setTimeout(() => setOpen(false), 1800);
+        setServerReported({ key: reportKey, value: true });
+        try {
+          localStorage.setItem(reportKey, "1");
+        } catch {
+          // ignore
+        }
+        setTimeout(handleClose, 1800);
       } else {
         setStatus("error");
       }
@@ -125,8 +171,8 @@ export function ReportDialog({ targetType, targetDocumentId }: Props) {
         }`}
       >
         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/>
-          <line x1="4" x2="4" y1="22" y2="15"/>
+          <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" />
+          <line x1="4" x2="4" y1="22" y2="15" />
         </svg>
         {alreadyReported ? "Đã báo cáo" : "Báo cáo"}
       </button>
@@ -135,33 +181,41 @@ export function ReportDialog({ targetType, targetDocumentId }: Props) {
         <div
           ref={backdropRef}
           className="fixed inset-0 z-[100] flex items-center justify-center p-4"
-          onClick={(e) => { if (e.target === backdropRef.current) setOpen(false); }}
+          onClick={(e) => {
+            if (e.target === backdropRef.current) handleClose();
+          }}
         >
           <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
 
           <div className="relative w-full max-w-md bg-white dark:bg-zinc-950 rounded-2xl shadow-2xl border border-zinc-200 dark:border-zinc-800 p-6 animate-in fade-in zoom-in-95 duration-200 flex flex-col gap-5">
-            {/* Header */}
             <div className="flex items-start justify-between">
               <div>
                 <h2 className="text-base font-bold text-zinc-900 dark:text-zinc-50">Báo cáo bài viết</h2>
-                <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-0.5">Nội dung vi phạm sẽ được đội ngũ kiểm duyệt xem xét.</p>
+                <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-0.5">
+                  Nội dung vi phạm sẽ được đội ngũ kiểm duyệt xem xét.
+                </p>
               </div>
               <button
-                onClick={() => setOpen(false)}
+                onClick={handleClose}
                 className="p-1.5 rounded-full text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M18 6 6 18" />
+                  <path d="m6 6 12 12" />
+                </svg>
               </button>
             </div>
 
             {status === "success" ? (
               <div className="flex flex-col items-center gap-3 py-6 text-green-600 dark:text-green-400">
-                <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m9 11 3 3L22 4"/></svg>
-                <p className="text-sm font-medium">Báo cáo đã được gửi. Cảm ơn bạn!</p>
+                <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                  <path d="m9 11 3 3L22 4" />
+                </svg>
+                <p className="text-sm font-medium">Báo cáo đã được gửi. Cảm ơn bạn.</p>
               </div>
             ) : (
               <>
-                {/* Category */}
                 <div className="flex flex-col gap-2">
                   <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
                     Lý do báo cáo <span className="text-red-500">*</span>
@@ -184,7 +238,6 @@ export function ReportDialog({ targetType, targetDocumentId }: Props) {
                   </div>
                 </div>
 
-                {/* Detail */}
                 <div className="flex flex-col gap-1.5">
                   <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
                     Chi tiết thêm <span className="text-zinc-400 font-normal">(tùy chọn)</span>
@@ -206,7 +259,7 @@ export function ReportDialog({ targetType, targetDocumentId }: Props) {
 
                 <div className="flex gap-2 justify-end pt-1">
                   <button
-                    onClick={() => setOpen(false)}
+                    onClick={handleClose}
                     className="px-4 py-2 text-sm font-medium rounded-lg text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
                   >
                     Hủy

@@ -330,6 +330,22 @@ export async function getPostBySlug(slug: string) {
   return payload.data[0] ?? null;
 }
 
+function parsePostRouteId(routeId: string) {
+  const trimmed = routeId.trim();
+  if (!trimmed) {
+    return { slug: "", documentId: "" };
+  }
+
+  if (!trimmed.includes("--")) {
+    return { slug: trimmed, documentId: trimmed };
+  }
+
+  const parts = trimmed.split("--");
+  const documentId = parts.pop()?.trim() ?? "";
+  const slug = parts.join("--").trim();
+  return { slug, documentId };
+}
+
 export async function getTagBySlug(slug: string) {
   const payload = await strapiFetch<StrapiListResponse<Tag>>(
     "/api/tags?" +
@@ -456,6 +472,23 @@ export async function getPageBySlug(slug: string): Promise<StrapiPage | null> {
   } catch {
     return null;
   }
+}
+
+export async function getPostByRouteId(routeId: string) {
+  const { slug, documentId } = parsePostRouteId(routeId);
+
+  if (documentId) {
+    const byDocumentId = await getPostByDocumentId(documentId);
+    if (byDocumentId) {
+      return byDocumentId;
+    }
+  }
+
+  if (slug) {
+    return getPostBySlug(slug);
+  }
+
+  return null;
 }
 
 type SitemapEntry = {

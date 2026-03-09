@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useSyncExternalStore } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/components/auth-context";
 import { PostForm } from "@/components/post-form";
@@ -10,11 +10,11 @@ export default function EditMyPostPage() {
   const params = useParams<{ documentId: string }>();
   const documentId = String(params?.documentId ?? "").trim();
   const { isLoggedIn, jwt, openLoginModal } = useAuth();
-  const [isHydrated, setIsHydrated] = useState(false);
-
-  useEffect(() => {
-    setIsHydrated(true);
-  }, []);
+  const isHydrated = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false,
+  );
 
   useEffect(() => {
     if (!isHydrated) return;

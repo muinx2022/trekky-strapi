@@ -1,8 +1,8 @@
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
-import { getCommentsForTarget, getPostByDocumentId } from "@/lib/strapi";
+import { getCommentsForTarget, getPostByRouteId } from "@/lib/strapi";
 import { RichTextWithLightbox } from "@/components/rich-text-with-lightbox";
 import { PostViewGallery } from "@/components/post-view-gallery";
 import { PostActions } from "@/components/post-actions";
@@ -34,9 +34,7 @@ type PostPageProps = {
 
 export async function generateMetadata({ params }: PostPageProps): Promise<Metadata> {
   const { id } = await params;
-  const documentId = id.includes("--") ? id.split("--").pop() : id;
-  if (!documentId) return {};
-  const post = await getPostByDocumentId(documentId);
+  const post = await getPostByRouteId(id);
   if (!post) return {};
 
   const description = truncate(stripHtml(post.content ?? ""), 160);
@@ -73,17 +71,15 @@ export async function generateMetadata({ params }: PostPageProps): Promise<Metad
 
 export default async function PostPage({ params }: PostPageProps) {
   const { id } = await params;
-
-  const documentId = id.includes("--") ? id.split("--").pop() : id;
-
-  if (!documentId) {
-    notFound();
-  }
-
-  const post = await getPostByDocumentId(documentId);
+  const post = await getPostByRouteId(id);
 
   if (!post) {
     notFound();
+  }
+
+  const canonicalId = `${post.slug}--${post.documentId}`;
+  if (id !== canonicalId) {
+    permanentRedirect(`/p/${canonicalId}`);
   }
 
   const comments = await getCommentsForTarget("post", post.documentId);

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Lightbox, type LightboxImage } from "./lightbox";
-import { normalizeMediaUrlsInHtml } from "@/lib/seo";
+import { sanitizeRichHtml } from "@/lib/seo";
 
 type LightboxState = { images: LightboxImage[]; index: number } | null;
 
@@ -14,7 +14,7 @@ type Props = {
 export function RichTextWithLightbox({ html, className }: Props) {
   const ref = useRef<HTMLDivElement>(null);
   const [lightbox, setLightbox] = useState<LightboxState>(null);
-  const normalizedHtml = normalizeMediaUrlsInHtml(html);
+  const normalizedHtml = sanitizeRichHtml(html);
 
   useEffect(() => {
     if (!ref.current) return;

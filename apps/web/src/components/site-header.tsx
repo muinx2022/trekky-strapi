@@ -206,7 +206,8 @@ function SearchBox({ onSearch }: { onSearch: (q: string) => void }) {
   );
 }
 
-export function SiteHeader({ mobileMenuHref = "#mobile-left-drawer" }: SiteHeaderProps) {
+export function SiteHeader({ mobileMenuHref: _mobileMenuHref = "#mobile-left-drawer" }: SiteHeaderProps) {
+  void _mobileMenuHref;
   const { isLoggedIn, user, logout, openLoginModal } = useAuth();
   const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
