@@ -710,6 +710,7 @@ async function fetchSeededUsers(strapi: Core.Strapi): Promise<SeededUser[]> {
 async function fetchPublishedPosts(strapi: Core.Strapi, limit: number) {
   return (await strapi.db.query('api::post.post').findMany({
     where: { publishedAt: { $notNull: true } },
+    populate: ['author'],
     orderBy: { createdAt: 'asc' },
     limit,
   })) as PostEntry[];
@@ -1684,6 +1685,28 @@ export async function runCommentAutomation(strapi: Core.Strapi): Promise<AiAutom
 
           await strapi.db.query('api::comment.comment').create({ data });
           result.createdComments = (result.createdComments ?? 0) + 1;
+
+          // Auto-like the post
+          const alreadyLiked = await strapi.db.query('api::interaction.interaction').findOne({
+            where: { actionType: 'like', targetType: 'post', targetDocumentId: post.documentId, user: actor.id },
+          });
+          if (!alreadyLiked) {
+            await strapi.db.query('api::interaction.interaction').create({
+              data: { actionType: 'like', targetType: 'post', targetDocumentId: post.documentId, user: actor.id },
+            });
+          }
+
+          // Auto-follow the post author
+          if (post.author && post.author.id !== actor.id && post.author.documentId) {
+            const alreadyFollowed = await strapi.db.query('api::interaction.interaction').findOne({
+              where: { actionType: 'follow', targetType: 'user', targetDocumentId: post.author.documentId, user: actor.id },
+            });
+            if (!alreadyFollowed) {
+              await strapi.db.query('api::interaction.interaction').create({
+                data: { actionType: 'follow', targetType: 'user', targetDocumentId: post.author.documentId, user: actor.id },
+              });
+            }
+          }
         } catch (error) {
           result.skipped += 1;
           result.errors.push(error instanceof Error ? error.message : String(error));
