@@ -113,7 +113,6 @@ function CategoryRow({
             />
             <span className="sr-only">{item.publishedAt ? "Published" : "Draft"}</span>
           </button>
-          <span className="text-xs text-muted-foreground">{item.publishedAt ? "Published" : "Draft"}</span>
         </div>
         <div className="text-muted-foreground">{formatDate(item.updatedAt)}</div>
         <div className="flex justify-end gap-1.5 opacity-100 pointer-events-auto transition-opacity duration-150 md:opacity-0 md:pointer-events-none md:group-hover:opacity-100 md:group-hover:pointer-events-auto md:group-focus-within:opacity-100 md:group-focus-within:pointer-events-auto">

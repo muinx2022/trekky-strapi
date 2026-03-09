@@ -21,6 +21,7 @@ import {
   deletePost,
   listAllCategories,
   listPosts,
+  publishPost,
   unpublishPost,
   type CategoryItem,
   type PaginationMeta,
@@ -84,21 +85,6 @@ function CategoryOptions({
         </Fragment>
       ))}
     </>
-  );
-}
-
-function PostStatusBadge({ publishedAt }: { publishedAt?: string | null }) {
-  const published = !!publishedAt;
-  return (
-    <span
-      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
-        published
-          ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
-          : "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400"
-      }`}
-    >
-      {published ? "Published" : "Draft"}
-    </span>
   );
 }
 
@@ -257,6 +243,28 @@ export function PostsManager() {
     }
   };
 
+  const onTogglePublished = async (item: PostItem) => {
+    try {
+      setActionDocumentId(item.documentId);
+      const updated = item.publishedAt ? await unpublishPost(item.documentId) : await publishPost(item.documentId);
+      applyUpdatedPost(item.documentId, updated.publishedAt ?? null, updated.updatedAt);
+      toast({
+        title: updated.publishedAt ? "Post published" : "Post moved to draft",
+        variant: "success",
+      });
+    } catch (toggleError) {
+      const message = toggleError instanceof Error ? toggleError.message : "Failed to change publish status";
+      setError(message);
+      toast({
+        title: "Failed to change status",
+        description: message,
+        variant: "error",
+      });
+    } finally {
+      setActionDocumentId(null);
+    }
+  };
+
   const onApplyFilters = () => {
     setPage(1);
     setFilters({
@@ -361,7 +369,6 @@ export function PostsManager() {
                     </Link>
                     <p className="mt-1 break-all text-xs text-muted-foreground">{item.slug}</p>
                   </div>
-                  <PostStatusBadge publishedAt={item.publishedAt} />
                 </div>
 
                 <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
@@ -394,7 +401,22 @@ export function PostsManager() {
                 </div>
 
                 <div className="mt-4 flex items-center justify-between gap-3">
-                  <p className="text-sm font-medium">{item.publishedAt ? "Published" : "Draft"}</p>
+                  <button
+                    type="button"
+                    className={`relative inline-flex h-4 w-7 items-center rounded-full transition-colors ${
+                      item.publishedAt ? "bg-emerald-600" : "bg-muted-foreground/30"
+                    }`}
+                    onClick={() => void onTogglePublished(item)}
+                    disabled={actionDocumentId === item.documentId}
+                    title={item.publishedAt ? "Published" : "Draft"}
+                  >
+                    <span
+                      className={`inline-block h-3 w-3 transform rounded-full bg-background shadow transition-transform ${
+                        item.publishedAt ? "translate-x-[14px]" : "translate-x-0.5"
+                      }`}
+                    />
+                    <span className="sr-only">{item.publishedAt ? "Published" : "Draft"}</span>
+                  </button>
                   <div className={`grid shrink-0 gap-2 ${item.publishedAt ? "grid-cols-4" : "grid-cols-3"}`}>
                     <Button asChild variant="outline" size="sm" className="px-2">
                       <Link href={`/posts/${item.documentId}/view`} className="inline-flex items-center gap-1.5">
@@ -482,7 +504,22 @@ export function PostsManager() {
                     <TableCell>{formatDate(item.createdAt)}</TableCell>
                     <TableCell>{formatDate(item.updatedAt)}</TableCell>
                     <TableCell className="text-center">
-                      <PostStatusBadge publishedAt={item.publishedAt} />
+                      <button
+                        type="button"
+                        className={`relative inline-flex h-4 w-7 items-center rounded-full transition-colors ${
+                          item.publishedAt ? "bg-emerald-600" : "bg-muted-foreground/30"
+                        }`}
+                        onClick={() => void onTogglePublished(item)}
+                        disabled={actionDocumentId === item.documentId}
+                        title={item.publishedAt ? "Published" : "Draft"}
+                      >
+                        <span
+                          className={`inline-block h-3 w-3 transform rounded-full bg-background shadow transition-transform ${
+                            item.publishedAt ? "translate-x-[14px]" : "translate-x-0.5"
+                          }`}
+                        />
+                        <span className="sr-only">{item.publishedAt ? "Published" : "Draft"}</span>
+                      </button>
                     </TableCell>
                     <TableCell className="text-center">
                       <button
