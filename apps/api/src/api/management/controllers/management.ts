@@ -640,7 +640,7 @@ export default {
           select: ['id', 'username', 'email'],
         })
       : [];
-    const userMap = new Map((userRows as any[]).map((u: any) => [u.id, u]));
+    const userMap = new Map((userRows as any[]).map((u: any) => [Number(u.id), u]));
 
     // Fetch post title+slug for post-type targets
     const postDocIds = [...new Set(
@@ -648,7 +648,7 @@ export default {
     )] as string[];
     const postRows = postDocIds.length > 0
       ? await strapi.db.query('api::post.post').findMany({
-          where: { documentId: { $in: postDocIds }, publishedAt: { $not: null } },
+          where: { documentId: { $in: postDocIds } },
           select: ['documentId', 'title', 'slug'],
         })
       : [];
@@ -659,7 +659,7 @@ export default {
       const post = r.targetType === 'post' ? postMap.get(r.targetDocumentId) : null;
       return {
         ...r,
-        reporter: reporterId ? (userMap.get(reporterId) ?? null) : null,
+        reporter: reporterId ? (userMap.get(Number(reporterId)) ?? null) : null,
         targetTitle: post?.title ?? null,
         targetSlug: post?.slug ?? null,
       };
@@ -679,7 +679,40 @@ export default {
   },
 
   async updateReportStatus(ctx: any) {
-    const id = Number(ctx.params?.id);
+    const rawId = ctx.params?.id;
+
+    // Bulk resolve: PUT /management/reports/resolve/status
+    if (rawId === 'resolve') {
+      const { targetType, targetDocumentId, action } = ctx.request.body ?? {};
+      if (!targetType || !targetDocumentId) return ctx.badRequest('Missing targetType or targetDocumentId');
+      if (action !== 'approve' && action !== 'reject') return ctx.badRequest('action must be approve or reject');
+
+      const newStatus = action === 'approve' ? 'reviewed' : 'dismissed';
+
+      const pendingReports = await strapi.db.query('api::report.report').findMany({
+        where: { targetType, targetDocumentId, status: 'pending' },
+        select: ['id'],
+      }) as Array<{ id: number }>;
+
+      await Promise.all(
+        pendingReports.map((r: { id: number }) =>
+          strapi.db.query('api::report.report').update({ where: { id: r.id }, data: { status: newStatus } }),
+        ),
+      );
+
+      if (action === 'approve' && targetType === 'post') {
+        try {
+          await strapi.documents('api::post.post').unpublish({ documentId: targetDocumentId });
+        } catch (_e) {
+          // post may already be unpublished or not found — ignore
+        }
+      }
+
+      ctx.body = { data: { updatedCount: pendingReports.length, status: newStatus } };
+      return;
+    }
+
+    const id = Number(rawId);
     if (!Number.isFinite(id)) return ctx.badRequest('Invalid id');
 
     const status = String(ctx.request.body?.status ?? '').trim();

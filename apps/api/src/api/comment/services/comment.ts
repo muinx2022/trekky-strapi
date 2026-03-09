@@ -63,6 +63,60 @@ async function normalizeCommentPayload(strapi: any, payload: any, currentDocumen
   return data;
 }
 
+async function collectCommentSubtreeDocumentIds(strapi: any, documentId: string) {
+  const target = await strapi.documents(UID).findOne({
+    documentId,
+    fields: ['documentId', 'targetType', 'targetDocumentId'],
+  });
+
+  if (!target) {
+    throw new Error('Comment not found');
+  }
+
+  const rows = (await strapi.documents(UID).findMany({
+    filters: {
+      targetType: target.targetType,
+      targetDocumentId: target.targetDocumentId,
+    },
+    fields: ['documentId'],
+    populate: {
+      parent: {
+        fields: ['documentId'],
+      },
+    },
+    pagination: { page: 1, pageSize: 1000 },
+  })) as Array<{ documentId: string; parent?: { documentId?: string | null } | null }>;
+
+  const childrenByParent = new Map<string, string[]>();
+  for (const row of rows) {
+    const parentDocumentId = row.parent?.documentId;
+    if (!parentDocumentId) {
+      continue;
+    }
+    const bucket = childrenByParent.get(parentDocumentId) ?? [];
+    bucket.push(row.documentId);
+    childrenByParent.set(parentDocumentId, bucket);
+  }
+
+  const subtree: string[] = [];
+  const stack = [documentId];
+
+  while (stack.length > 0) {
+    const current = stack.pop();
+    if (!current || subtree.includes(current)) {
+      continue;
+    }
+
+    subtree.push(current);
+    const children = childrenByParent.get(current) ?? [];
+    for (const child of children) {
+      stack.push(child);
+    }
+  }
+
+  return subtree.reverse();
+}
+
 function normalizeIdentity(value: unknown) {
   return String(value ?? '').trim().toLowerCase();
 }
@@ -323,6 +377,17 @@ export default factories.createCoreService(UID, ({ strapi }) => ({
   },
 
   async deleteForAdmin(documentId: string) {
-    return strapi.documents(UID).delete({ documentId });
+    const subtreeDocumentIds = await collectCommentSubtreeDocumentIds(strapi, documentId);
+    let deleted: any = null;
+
+    for (const currentDocumentId of subtreeDocumentIds) {
+      deleted = await strapi.documents(UID).delete({ documentId: currentDocumentId });
+    }
+
+    return {
+      deletedRootDocumentId: documentId,
+      deletedDocumentIds: subtreeDocumentIds,
+      deleted,
+    };
   },
 }));

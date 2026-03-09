@@ -29,7 +29,7 @@ async function findAllDocumentIdsByStatus(
 
   while (true) {
     const batch = (await strapi.documents(UID).findMany({
-      sort: 'updatedAt:desc',
+      sort: 'createdAt:desc',
       filters,
       fields: ['documentId'],
       pagination: { page, pageSize },
@@ -54,7 +54,7 @@ async function findAllDocumentIdsByStatus(
 export default factories.createCoreService(UID, ({ strapi }) => ({
   async listForAdmin(query: any) {
     const { page, pageSize } = toPagination(query);
-    const sort = query?.sort ?? 'updatedAt:desc';
+    const sort = query?.sort ?? 'createdAt:desc';
     const status = toStatus(query?.status);
     const keyword = String(query?.q ?? '').trim();
     const keywordFilters = keyword

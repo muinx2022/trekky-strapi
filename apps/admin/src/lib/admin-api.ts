@@ -439,7 +439,7 @@ export async function listPosts(
   filters?: { q?: string; status?: "all" | "draft" | "published"; category?: string },
 ) {
   const query = new URLSearchParams({
-    sort: "updatedAt:desc",
+    sort: "createdAt:desc",
     "populate[categories][fields][0]": "id",
     "populate[categories][fields][1]": "documentId",
     "populate[categories][fields][2]": "name",
@@ -1057,6 +1057,17 @@ export async function listReports(
   });
   const payload = await request(`/api/management/reports?${query.toString()}`);
   return toPaginated<ReportItem>(payload, page, pageSize);
+}
+
+export async function resolveReports(targetType: string, targetDocumentId: string, action: "approve" | "reject") {
+  const payload = await request<ApiResponse<{ updatedCount: number; status: ReportStatus }>>(
+    "/api/management/reports/resolve/status",
+    {
+      method: "PUT",
+      body: JSON.stringify({ targetType, targetDocumentId, action }),
+    },
+  );
+  return toItem<{ updatedCount: number; status: ReportStatus }>(payload);
 }
 
 export async function updateReportStatus(id: number, status: ReportStatus) {

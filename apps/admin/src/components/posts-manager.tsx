@@ -1,8 +1,9 @@
-﻿"use client";
+"use client";
 
 import React, { Fragment } from "react";
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Eye, EyeOff, Pencil, Plus, Trash2, X } from "lucide-react";
 import { toast } from "@/components/ui/app-toast";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,19 +17,23 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Eye, Pencil, Plus, Trash2 } from "lucide-react";
 import {
   deletePost,
   listAllCategories,
   listPosts,
-  publishPost,
   unpublishPost,
   type CategoryItem,
   type PaginationMeta,
   type PostItem,
 } from "@/lib/admin-api";
+import { PostCommentsModal } from "@/components/post-comments-modal";
 
 type TreeCategory = CategoryItem & { children: TreeCategory[] };
+
+type PendingPostAction =
+  | { type: "delete"; post: PostItem }
+  | { type: "unpublish"; post: PostItem }
+  | null;
 
 function formatDate(value?: string | null) {
   if (!value) {
@@ -43,19 +48,20 @@ function formatDate(value?: string | null) {
 
 function buildCategoryTree(categories: CategoryItem[]) {
   const map = new Map<number, TreeCategory>();
-  categories.forEach((c) => map.set(c.id, { ...c, children: [] }));
+  categories.forEach((category) => map.set(category.id, { ...category, children: [] }));
   const roots: TreeCategory[] = [];
 
-  for (const cat of categories) {
-    const node = map.get(cat.id);
-    if (node) {
-      if (cat.parent?.id && map.has(cat.parent.id)) {
-        map.get(cat.parent.id)!.children.push(node);
-      } else {
-        roots.push(node);
-      }
+  for (const category of categories) {
+    const node = map.get(category.id);
+    if (!node) continue;
+
+    if (category.parent?.id && map.has(category.parent.id)) {
+      map.get(category.parent.id)!.children.push(node);
+    } else {
+      roots.push(node);
     }
   }
+
   return roots;
 }
 
@@ -81,6 +87,78 @@ function CategoryOptions({
   );
 }
 
+function PostStatusBadge({ publishedAt }: { publishedAt?: string | null }) {
+  const published = !!publishedAt;
+  return (
+    <span
+      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
+        published
+          ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
+          : "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400"
+      }`}
+    >
+      {published ? "Published" : "Draft"}
+    </span>
+  );
+}
+
+function ConfirmPostActionModal({
+  pendingAction,
+  loading,
+  onCancel,
+  onConfirm,
+}: {
+  pendingAction: PendingPostAction;
+  loading: boolean;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  if (!pendingAction) {
+    return null;
+  }
+
+  const isDelete = pendingAction.type === "delete";
+  const title = isDelete ? "Delete post" : "Unpublish post";
+  const description = isDelete
+    ? `Delete "${pendingAction.post.title}"? This action cannot be undone.`
+    : `Move "${pendingAction.post.title}" back to draft?`;
+  const confirmLabel = isDelete ? "Delete" : "Unpublish";
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+      <div className="w-full max-w-md rounded-2xl border bg-background shadow-2xl">
+        <div className="flex items-start justify-between gap-4 border-b px-6 py-4">
+          <div>
+            <h3 className="text-lg font-semibold">{title}</h3>
+            <p className="mt-1 text-sm text-muted-foreground">{description}</p>
+          </div>
+          <button
+            type="button"
+            onClick={onCancel}
+            className="rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            aria-label="Close confirmation"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+        <div className="flex items-center justify-end gap-2 px-6 py-4">
+          <Button type="button" variant="outline" onClick={onCancel} disabled={loading}>
+            Cancel
+          </Button>
+          <Button
+            type="button"
+            variant={isDelete ? "destructive" : "default"}
+            onClick={onConfirm}
+            disabled={loading}
+          >
+            {loading ? "Processing..." : confirmLabel}
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function PostsManager() {
   const [rows, setRows] = useState<PostItem[]>([]);
   const [categories, setCategories] = useState<TreeCategory[]>([]);
@@ -92,7 +170,7 @@ export function PostsManager() {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [togglingDocumentId, setTogglingDocumentId] = useState<string | null>(null);
+  const [actionDocumentId, setActionDocumentId] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [qInput, setQInput] = useState("");
   const [statusInput, setStatusInput] = useState<"all" | "draft" | "published">("all");
@@ -102,6 +180,8 @@ export function PostsManager() {
     status: "all" as "all" | "draft" | "published",
     category: "",
   });
+  const [commentsModalPostId, setCommentsModalPostId] = useState<string | null>(null);
+  const [pendingAction, setPendingAction] = useState<PendingPostAction>(null);
 
   useEffect(() => {
     listAllCategories().then((cats) => {
@@ -127,58 +207,53 @@ export function PostsManager() {
     void load();
   }, [load]);
 
-  const onDelete = async (item: PostItem) => {
-    if (!confirm(`Delete post "${item.title}"?`)) {
+  const applyUpdatedPost = useCallback((documentId: string, publishedAt: string | null, updatedAt?: string) => {
+    setRows((prev) => {
+      const next = prev.map((row) =>
+        row.documentId === documentId
+          ? { ...row, publishedAt, updatedAt: updatedAt ?? row.updatedAt }
+          : row,
+      );
+      if (filters.status === "published" && !publishedAt) {
+        return next.filter((row) => row.documentId !== documentId);
+      }
+      if (filters.status === "draft" && publishedAt) {
+        return next.filter((row) => row.documentId !== documentId);
+      }
+      return next;
+    });
+  }, [filters.status]);
+
+  const onConfirmAction = async () => {
+    if (!pendingAction) {
       return;
     }
-    try {
-      await deletePost(item.documentId);
-      toast({ title: "Post deleted", variant: "success" });
-      await load();
-    } catch (deleteError) {
-      setError(deleteError instanceof Error ? deleteError.message : "Failed to delete post");
-      toast({
-        title: "Failed to delete post",
-        description: deleteError instanceof Error ? deleteError.message : undefined,
-        variant: "error",
-      });
-    }
-  };
 
-  const onTogglePublished = async (item: PostItem) => {
+    const { post, type } = pendingAction;
     try {
-      setTogglingDocumentId(item.documentId);
-      const updated = item.publishedAt
-        ? await unpublishPost(item.documentId)
-        : await publishPost(item.documentId);
+      setActionDocumentId(post.documentId);
 
-      setRows((prev) => {
-        const next = prev.map((row) =>
-          row.documentId === item.documentId
-            ? { ...row, publishedAt: updated.publishedAt ?? null, updatedAt: updated.updatedAt }
-            : row,
-        );
-        if (filters.status === "published" && !updated.publishedAt) {
-          return next.filter((row) => row.documentId !== item.documentId);
-        }
-        if (filters.status === "draft" && updated.publishedAt) {
-          return next.filter((row) => row.documentId !== item.documentId);
-        }
-        return next;
-      });
+      if (type === "delete") {
+        await deletePost(post.documentId);
+        toast({ title: "Post deleted", variant: "success" });
+        await load();
+      } else {
+        const updated = await unpublishPost(post.documentId);
+        applyUpdatedPost(post.documentId, updated.publishedAt ?? null, updated.updatedAt);
+        toast({ title: "Post moved to draft", variant: "success" });
+      }
+
+      setPendingAction(null);
+    } catch (actionError) {
+      const message = actionError instanceof Error ? actionError.message : "Action failed";
+      setError(message);
       toast({
-        title: updated.publishedAt ? "Post published" : "Post moved to draft",
-        variant: "success",
-      });
-    } catch (toggleError) {
-      setError(toggleError instanceof Error ? toggleError.message : "Failed to change publish status");
-      toast({
-        title: "Failed to change status",
-        description: toggleError instanceof Error ? toggleError.message : undefined,
+        title: type === "delete" ? "Failed to delete post" : "Failed to unpublish post",
+        description: message,
         variant: "error",
       });
     } finally {
-      setTogglingDocumentId(null);
+      setActionDocumentId(null);
     }
   };
 
@@ -202,6 +277,21 @@ export function PostsManager() {
       category: "",
     });
   };
+
+  const updatePostCommentCount = useCallback((documentId: string, count: number) => {
+    setRows((prev) =>
+      prev.map((row) =>
+        row.documentId === documentId
+          ? { ...row, commentsCount: count }
+          : row,
+      ),
+    );
+  }, []);
+
+  const confirmLoading = useMemo(() => {
+    if (!pendingAction) return false;
+    return actionDocumentId === pendingAction.post.documentId;
+  }, [actionDocumentId, pendingAction]);
 
   return (
     <div className="space-y-6">
@@ -239,9 +329,7 @@ export function PostsManager() {
             <select
               className="h-10 rounded-md border bg-background px-3 text-sm"
               value={statusInput}
-              onChange={(event) =>
-                setStatusInput(event.target.value as "all" | "draft" | "published")
-              }
+              onChange={(event) => setStatusInput(event.target.value as "all" | "draft" | "published")}
             >
               <option value="all">All status</option>
               <option value="published">Published</option>
@@ -258,6 +346,7 @@ export function PostsManager() {
           </div>
           {loading && <p className="text-sm text-muted-foreground">Loading...</p>}
           {error && <p className="text-sm text-destructive">{error}</p>}
+
           <div className="space-y-3 md:hidden">
             {rows.map((item) => (
               <div key={item.documentId} className="rounded-xl border bg-card p-4 shadow-sm">
@@ -272,22 +361,7 @@ export function PostsManager() {
                     </Link>
                     <p className="mt-1 break-all text-xs text-muted-foreground">{item.slug}</p>
                   </div>
-                  <button
-                    type="button"
-                    className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors ${
-                      item.publishedAt ? "bg-emerald-600" : "bg-muted-foreground/30"
-                    }`}
-                    onClick={() => onTogglePublished(item)}
-                    disabled={togglingDocumentId === item.documentId}
-                    title={item.publishedAt ? "Published" : "Draft"}
-                  >
-                    <span
-                      className={`inline-block h-4 w-4 transform rounded-full bg-background shadow transition-transform ${
-                        item.publishedAt ? "translate-x-4" : "translate-x-0.5"
-                      }`}
-                    />
-                    <span className="sr-only">{item.publishedAt ? "Published" : "Draft"}</span>
-                  </button>
+                  <PostStatusBadge publishedAt={item.publishedAt} />
                 </div>
 
                 <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
@@ -297,7 +371,13 @@ export function PostsManager() {
                   </div>
                   <div>
                     <p className="text-xs text-muted-foreground">Comments</p>
-                    <p className="mt-1">{item.commentsCount ?? 0}</p>
+                    <button
+                      type="button"
+                      className="mt-1 cursor-pointer text-left font-medium text-primary hover:underline"
+                      onClick={() => setCommentsModalPostId(item.documentId)}
+                    >
+                      {item.commentsCount ?? 0}
+                    </button>
                   </div>
                   <div className="col-span-2">
                     <p className="text-xs text-muted-foreground">Category</p>
@@ -315,7 +395,7 @@ export function PostsManager() {
 
                 <div className="mt-4 flex items-center justify-between gap-3">
                   <p className="text-sm font-medium">{item.publishedAt ? "Published" : "Draft"}</p>
-                  <div className="grid shrink-0 grid-cols-3 gap-2">
+                  <div className={`grid shrink-0 gap-2 ${item.publishedAt ? "grid-cols-4" : "grid-cols-3"}`}>
                     <Button asChild variant="outline" size="sm" className="px-2">
                       <Link href={`/posts/${item.documentId}/view`} className="inline-flex items-center gap-1.5">
                         <Eye className="h-4 w-4" />
@@ -328,7 +408,27 @@ export function PostsManager() {
                         <span className="sr-only">Edit</span>
                       </Link>
                     </Button>
-                    <Button type="button" variant="destructive" size="sm" onClick={() => onDelete(item)} className="px-2">
+                    {item.publishedAt && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="px-2"
+                        onClick={() => setPendingAction({ type: "unpublish", post: item })}
+                        disabled={actionDocumentId === item.documentId}
+                      >
+                        <EyeOff className="h-4 w-4" />
+                        <span className="sr-only">Unpublish</span>
+                      </Button>
+                    )}
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => setPendingAction({ type: "delete", post: item })}
+                      className="px-2"
+                      disabled={actionDocumentId === item.documentId}
+                    >
                       <Trash2 className="h-4 w-4" />
                       <span className="sr-only">Delete</span>
                     </Button>
@@ -344,7 +444,7 @@ export function PostsManager() {
           </div>
 
           <div className="hidden md:block">
-          <Table className="[&_td]:align-top [&_td]:break-words [&_td]:whitespace-normal">
+            <Table className="[&_td]:align-top [&_td]:break-words [&_td]:whitespace-normal">
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-[56px]">ID</TableHead>
@@ -360,72 +460,76 @@ export function PostsManager() {
               </TableHeader>
               <TableBody>
                 {rows.map((item) => (
-                <TableRow key={item.documentId} className="group">
-                  <TableCell>{item.id}</TableCell>
-                  <TableCell>
-                    <div>
-                      <Link
-                        href={`/posts/${item.documentId}/edit`}
-                        className="font-medium text-foreground transition-colors hover:text-primary hover:underline"
+                  <TableRow key={item.documentId} className="group">
+                    <TableCell>{item.id}</TableCell>
+                    <TableCell>
+                      <div>
+                        <Link
+                          href={`/posts/${item.documentId}/edit`}
+                          className="font-medium text-foreground transition-colors hover:text-primary hover:underline"
+                        >
+                          {item.title}
+                        </Link>
+                        <p className="text-xs text-muted-foreground">{item.slug}</p>
+                      </div>
+                    </TableCell>
+                    <TableCell className="max-w-[220px]">
+                      <span className="line-clamp-2">
+                        {(item.categories ?? []).map((cat) => cat.name).join(", ") || "-"}
+                      </span>
+                    </TableCell>
+                    <TableCell>{item.author?.username ?? "none"}</TableCell>
+                    <TableCell>{formatDate(item.createdAt)}</TableCell>
+                    <TableCell>{formatDate(item.updatedAt)}</TableCell>
+                    <TableCell className="text-center">
+                      <PostStatusBadge publishedAt={item.publishedAt} />
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <button
+                        type="button"
+                        className="cursor-pointer font-medium text-primary hover:underline"
+                        onClick={() => setCommentsModalPostId(item.documentId)}
                       >
-                        {item.title}
-                      </Link>
-                      <p className="text-xs text-muted-foreground">{item.slug}</p>
-                    </div>
-                  </TableCell>
-                  <TableCell className="max-w-[220px]">
-                    <span className="line-clamp-2">
-                      {(item.categories ?? []).map((cat) => cat.name).join(", ") || "-"}
-                    </span>
-                  </TableCell>
-                  <TableCell>{item.author?.username ?? "none"}</TableCell>
-                  <TableCell>{formatDate(item.createdAt)}</TableCell>
-                  <TableCell>{formatDate(item.updatedAt)}</TableCell>
-                  <TableCell className="text-center">
-                    <button
-                      type="button"
-                      className={`relative inline-flex h-4 w-7 items-center rounded-full transition-colors ${
-                        item.publishedAt ? "bg-emerald-600" : "bg-muted-foreground/30"
-                      }`}
-                      onClick={() => onTogglePublished(item)}
-                      disabled={togglingDocumentId === item.documentId}
-                      title={item.publishedAt ? "Published" : "Draft"}
-                    >
-                      <span
-                        className={`inline-block h-3 w-3 transform rounded-full bg-background shadow transition-transform ${
-                          item.publishedAt ? "translate-x-[14px]" : "translate-x-0.5"
-                        }`}
-                      />
-                      <span className="sr-only">{item.publishedAt ? "Published" : "Draft"}</span>
-                    </button>
-                  </TableCell>
-                  <TableCell className="text-center">{item.commentsCount ?? 0}</TableCell>
-                  <TableCell className="text-right">
-                    <div className="ml-auto flex w-fit gap-1.5 opacity-100 pointer-events-auto transition-opacity duration-150 md:opacity-0 md:pointer-events-none md:group-hover:opacity-100 md:group-hover:pointer-events-auto md:group-focus-within:opacity-100 md:group-focus-within:pointer-events-auto">
-                      <IconAction
-                        label="View post"
-                        icon={<Eye />}
-                        href={`/posts/${item.documentId}/view`}
-                        variant="outline"
-                        size="icon-xs"
-                      />
-                      <IconAction
-                        label="Edit post"
-                        icon={<Pencil />}
-                        href={`/posts/${item.documentId}/edit`}
-                        variant="outline"
-                        size="icon-xs"
-                      />
-                      <IconAction
-                        label="Delete post"
-                        icon={<Trash2 />}
-                        onClick={() => onDelete(item)}
-                        variant="destructive"
-                        size="icon-xs"
-                      />
-                    </div>
-                  </TableCell>
-                </TableRow>
+                        {item.commentsCount ?? 0}
+                      </button>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="ml-auto flex w-fit gap-1.5 opacity-100 transition-opacity duration-150 md:pointer-events-none md:opacity-0 md:group-hover:pointer-events-auto md:group-hover:opacity-100 md:group-focus-within:pointer-events-auto md:group-focus-within:opacity-100">
+                        <IconAction
+                          label="View post"
+                          icon={<Eye />}
+                          href={`/posts/${item.documentId}/view`}
+                          variant="outline"
+                          size="icon-xs"
+                        />
+                        <IconAction
+                          label="Edit post"
+                          icon={<Pencil />}
+                          href={`/posts/${item.documentId}/edit`}
+                          variant="outline"
+                          size="icon-xs"
+                        />
+                        {item.publishedAt && (
+                          <IconAction
+                            label="Unpublish post"
+                            icon={<EyeOff />}
+                            onClick={() => setPendingAction({ type: "unpublish", post: item })}
+                            variant="outline"
+                            size="icon-xs"
+                            disabled={actionDocumentId === item.documentId}
+                          />
+                        )}
+                        <IconAction
+                          label="Delete post"
+                          icon={<Trash2 />}
+                          onClick={() => setPendingAction({ type: "delete", post: item })}
+                          variant="destructive"
+                          size="icon-xs"
+                          disabled={actionDocumentId === item.documentId}
+                        />
+                      </div>
+                    </TableCell>
+                  </TableRow>
                 ))}
                 {rows.length === 0 && !loading && (
                   <TableRow>
@@ -433,10 +537,11 @@ export function PostsManager() {
                       No posts yet.
                     </TableCell>
                   </TableRow>
-              )}
-            </TableBody>
-          </Table>
+                )}
+              </TableBody>
+            </Table>
           </div>
+
           <PaginationControls
             page={pagination.page}
             pageCount={pagination.pageCount}
@@ -445,8 +550,30 @@ export function PostsManager() {
           />
         </CardContent>
       </Card>
+
+      <PostCommentsModal
+        documentId={commentsModalPostId}
+        open={!!commentsModalPostId}
+        onOpenChange={(open) => {
+          if (!open) {
+            setCommentsModalPostId(null);
+          }
+        }}
+        onCommentsChange={updatePostCommentCount}
+      />
+
+      <ConfirmPostActionModal
+        pendingAction={pendingAction}
+        loading={confirmLoading}
+        onCancel={() => {
+          if (!confirmLoading) {
+            setPendingAction(null);
+          }
+        }}
+        onConfirm={() => {
+          void onConfirmAction();
+        }}
+      />
     </div>
   );
 }
-
-

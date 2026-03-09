@@ -1,10 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Trash2, CheckCheck, Clock, XCircle, ChevronDown, ChevronRight, ExternalLink } from "lucide-react";
+import { Check, ChevronDown, ChevronRight, ExternalLink, X } from "lucide-react";
 import { toast } from "@/components/ui/app-toast";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { IconAction } from "@/components/icon-action";
 import { PaginationControls } from "@/components/pagination-controls";
 import {
   Table,
@@ -15,9 +15,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
-  deleteReport,
   listReports,
-  updateReportStatus,
+  resolveReports,
   type PaginationMeta,
   type ReportItem,
   type ReportStatus,
@@ -32,14 +31,14 @@ function formatDate(value?: string | null) {
 
 const STATUS_STYLES: Record<ReportStatus, string> = {
   pending: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
-  reviewed: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
+  reviewed: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
   dismissed: "bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400",
 };
 
 const STATUS_LABELS: Record<ReportStatus, string> = {
-  pending: "Chờ xử lý",
-  reviewed: "Đã xem xét",
-  dismissed: "Bỏ qua",
+  pending: "Pending",
+  reviewed: "Approved",
+  dismissed: "Rejected",
 };
 
 type ReportGroup = {
@@ -51,41 +50,113 @@ type ReportGroup = {
   pendingCount: number;
 };
 
+type PendingPostAction =
+  | {
+      type: "approve" | "reject";
+      group: ReportGroup;
+    }
+  | null;
+
 function groupReports(reports: ReportItem[]): ReportGroup[] {
   const map = new Map<string, ReportGroup>();
-  for (const r of reports) {
-    const key = `${r.targetType}:${r.targetDocumentId}`;
+  for (const report of reports) {
+    const key = `${report.targetType}:${report.targetDocumentId}`;
     if (!map.has(key)) {
       map.set(key, {
-        targetType: r.targetType,
-        targetDocumentId: r.targetDocumentId,
-        targetTitle: r.targetTitle,
-        targetSlug: r.targetSlug,
+        targetType: report.targetType,
+        targetDocumentId: report.targetDocumentId,
+        targetTitle: report.targetTitle,
+        targetSlug: report.targetSlug,
         reports: [],
         pendingCount: 0,
       });
     }
+
     const group = map.get(key)!;
-    group.reports.push(r);
-    if (r.status === "pending") group.pendingCount++;
-    if (r.targetTitle) group.targetTitle = r.targetTitle;
-    if (r.targetSlug) group.targetSlug = r.targetSlug;
+    group.reports.push(report);
+    if (report.status === "pending") group.pendingCount += 1;
+    if (report.targetTitle) group.targetTitle = report.targetTitle;
+    if (report.targetSlug) group.targetSlug = report.targetSlug;
   }
-  return Array.from(map.values()).sort((a, b) => b.pendingCount - a.pendingCount || b.reports.length - a.reports.length);
+
+  return Array.from(map.values()).sort((a, b) => {
+    if (b.pendingCount !== a.pendingCount) return b.pendingCount - a.pendingCount;
+    const latestA = Math.max(...a.reports.map((r) => new Date(r.createdAt ?? 0).getTime()));
+    const latestB = Math.max(...b.reports.map((r) => new Date(r.createdAt ?? 0).getTime()));
+    return latestB - latestA;
+  });
 }
 
 const WEB_URL = process.env.NEXT_PUBLIC_WEB_URL ?? "";
 
+function ConfirmReportPostActionModal({
+  pendingAction,
+  loading,
+  onCancel,
+  onConfirm,
+}: {
+  pendingAction: PendingPostAction;
+  loading: boolean;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  if (!pendingAction) {
+    return null;
+  }
+
+  const isApprove = pendingAction.type === "approve";
+  const postName = pendingAction.group.targetTitle ?? pendingAction.group.targetDocumentId;
+  const title = isApprove ? "Approve report" : "Reject report";
+  const description = isApprove
+    ? `Approve report and unpublish "${postName}"?`
+    : `Reject report — "${postName}" will not be affected.`;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+      <div className="w-full max-w-md rounded-2xl border bg-background shadow-2xl">
+        <div className="flex items-start justify-between gap-4 border-b px-6 py-4">
+          <div>
+            <h3 className="text-lg font-semibold">{title}</h3>
+            <p className="mt-1 text-sm text-muted-foreground">{description}</p>
+          </div>
+          <button
+            type="button"
+            onClick={onCancel}
+            className="rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            aria-label="Close confirmation"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+        <div className="flex items-center justify-end gap-2 px-6 py-4">
+          <Button type="button" variant="outline" onClick={onCancel} disabled={loading}>
+            Cancel
+          </Button>
+          <Button type="button" variant={isApprove ? "default" : "destructive"} onClick={onConfirm} disabled={loading}>
+            {loading ? "Processing..." : isApprove ? "Approve & unpublish" : "Reject"}
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function ReportsManager() {
   const [rows, setRows] = useState<ReportItem[]>([]);
-  const [pagination, setPagination] = useState<PaginationMeta>({ page: 1, pageSize: 10, pageCount: 1, total: 0 });
+  const [pagination, setPagination] = useState<PaginationMeta>({
+    page: 1,
+    pageSize: 10,
+    pageCount: 1,
+    total: 0,
+  });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState<"all" | ReportStatus>("all");
   const [targetTypeFilter, setTargetTypeFilter] = useState("all");
-  const [processingId, setProcessingId] = useState<number | null>(null);
   const [expandedKeys, setExpandedKeys] = useState<Set<string>>(new Set());
+  const [pendingAction, setPendingAction] = useState<PendingPostAction>(null);
+  const [actionDocumentId, setActionDocumentId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -101,7 +172,9 @@ export function ReportsManager() {
     }
   }, [page, statusFilter, targetTypeFilter]);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    void load();
+  }, [load]);
 
   const toggleExpand = (key: string) => {
     setExpandedKeys((prev) => {
@@ -111,28 +184,34 @@ export function ReportsManager() {
     });
   };
 
-  const onUpdateStatus = async (item: ReportItem, status: ReportStatus) => {
-    if (item.status === status) return;
-    setProcessingId(item.id);
-    try {
-      const updated = await updateReportStatus(item.id, status);
-      setRows((prev) => prev.map((r) => r.id === item.id ? { ...r, status: updated.status } : r));
-      toast({ title: `Cập nhật thành "${STATUS_LABELS[status]}"`, variant: "success" });
-    } catch (err) {
-      toast({ title: "Cập nhật thất bại", description: err instanceof Error ? err.message : undefined, variant: "error" });
-    } finally {
-      setProcessingId(null);
+  const onConfirmAction = async () => {
+    if (!pendingAction) {
+      return;
     }
-  };
 
-  const onDelete = async (item: ReportItem) => {
-    if (!confirm(`Xoá báo cáo #${item.id}?`)) return;
+    const { type, group } = pendingAction;
+    const documentId = group.targetDocumentId;
+
     try {
-      await deleteReport(item.id);
-      toast({ title: "Đã xoá báo cáo", variant: "success" });
-      setRows((prev) => prev.filter((r) => r.id !== item.id));
+      setActionDocumentId(documentId);
+      await resolveReports(group.targetType, documentId, type);
+
+      if (type === "approve") {
+        toast({ title: "Report approved — post unpublished", variant: "success" });
+      } else {
+        toast({ title: "Report rejected", variant: "success" });
+      }
+
+      setPendingAction(null);
+      void load();
     } catch (err) {
-      toast({ title: "Xoá thất bại", description: err instanceof Error ? err.message : undefined, variant: "error" });
+      toast({
+        title: "Action failed",
+        description: err instanceof Error ? err.message : undefined,
+        variant: "error",
+      });
+    } finally {
+      setActionDocumentId(null);
     }
   };
 
@@ -143,7 +222,9 @@ export function ReportsManager() {
       <CardHeader>
         <div>
           <CardTitle className="text-xl font-semibold tracking-tight">Reports</CardTitle>
-          <p className="text-sm text-muted-foreground">Quản lý các báo cáo từ người dùng · {groups.length} mục bị báo cáo</p>
+          <p className="text-sm text-muted-foreground">
+            Manage user reports · {groups.length} reported items
+          </p>
         </div>
       </CardHeader>
       <CardContent>
@@ -151,58 +232,66 @@ export function ReportsManager() {
           <select
             className="h-10 rounded-md border bg-background px-3 text-sm"
             value={statusFilter}
-            onChange={(e) => { setPage(1); setStatusFilter(e.target.value as "all" | ReportStatus); }}
+            onChange={(e) => {
+              setPage(1);
+              setStatusFilter(e.target.value as "all" | ReportStatus);
+            }}
           >
-            <option value="all">Tất cả trạng thái</option>
-            <option value="pending">Chờ xử lý</option>
-            <option value="reviewed">Đã xem xét</option>
-            <option value="dismissed">Bỏ qua</option>
+            <option value="all">All statuses</option>
+            <option value="pending">Pending</option>
+            <option value="reviewed">Approved</option>
+            <option value="dismissed">Rejected</option>
           </select>
           <select
             className="h-10 rounded-md border bg-background px-3 text-sm"
             value={targetTypeFilter}
-            onChange={(e) => { setPage(1); setTargetTypeFilter(e.target.value); }}
+            onChange={(e) => {
+              setPage(1);
+              setTargetTypeFilter(e.target.value);
+            }}
           >
-            <option value="all">Tất cả loại</option>
+            <option value="all">All types</option>
             <option value="post">Post</option>
             <option value="comment">Comment</option>
             <option value="user">User</option>
           </select>
         </div>
 
-        {loading && <p className="text-sm text-muted-foreground py-2">Đang tải...</p>}
-        {error && <p className="text-sm text-destructive py-2">{error}</p>}
+        {loading && <p className="py-2 text-sm text-muted-foreground">Loading...</p>}
+        {error && <p className="py-2 text-sm text-destructive">{error}</p>}
 
-        <div className="rounded-md border divide-y">
+        <div className="divide-y rounded-md border">
           {groups.length === 0 && !loading && (
-            <div className="py-10 text-center text-sm text-muted-foreground">Không có báo cáo nào.</div>
+            <div className="py-10 text-center text-sm text-muted-foreground">No reports found.</div>
           )}
 
           {groups.map((group) => {
             const key = `${group.targetType}:${group.targetDocumentId}`;
             const expanded = expandedKeys.has(key);
+            const isPostGroup = group.targetType === "post";
             const postUrl = group.targetType === "post" && group.targetSlug
               ? `${WEB_URL}/p/${group.targetSlug}--${group.targetDocumentId}`
               : null;
 
             return (
               <div key={key}>
-                {/* Group header row */}
                 <div
-                  className="flex items-center gap-3 px-4 py-3 hover:bg-muted/40 cursor-pointer select-none"
+                  className="flex cursor-pointer select-none items-center gap-3 px-4 py-3 hover:bg-muted/40"
                   onClick={() => toggleExpand(key)}
                 >
                   <span className="text-muted-foreground">
                     {expanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                   </span>
 
-                  <span className="capitalize text-xs font-medium text-muted-foreground bg-muted px-2 py-0.5 rounded shrink-0">{group.targetType}</span>
+                  <span className="shrink-0 rounded bg-muted px-2 py-0.5 text-xs font-medium capitalize text-muted-foreground">
+                    {group.targetType}
+                  </span>
 
                   <div className="min-w-0 flex-1">
                     {group.targetTitle ? (
-                      <p className="text-sm font-medium truncate">{group.targetTitle}</p>
+                      <p className="truncate text-sm font-medium">{group.targetTitle}</p>
                     ) : (
-                      <p className="font-mono text-xs text-muted-foreground truncate">{group.targetDocumentId}</p>
+                      <p className="truncate font-mono text-xs text-muted-foreground">{group.targetDocumentId}</p>
                     )}
                   </div>
 
@@ -212,43 +301,73 @@ export function ReportsManager() {
                       target="_blank"
                       rel="noopener noreferrer"
                       onClick={(e) => e.stopPropagation()}
-                      className="text-muted-foreground hover:text-foreground transition-colors shrink-0"
-                      title="Xem bài viết"
+                      className="shrink-0 text-muted-foreground transition-colors hover:text-foreground"
+                      title="View post"
                     >
                       <ExternalLink className="h-3.5 w-3.5" />
                     </a>
                   )}
 
-                  <div className="ml-auto flex items-center gap-2 shrink-0">
+                  {isPostGroup && group.pendingCount > 0 && (
+                    <div
+                      className="flex shrink-0 items-center gap-1"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="h-7 gap-1 border-green-500 text-green-600 hover:bg-green-50 hover:text-green-700 dark:border-green-700 dark:text-green-400 dark:hover:bg-green-950"
+                        onClick={() => setPendingAction({ type: "approve", group })}
+                        disabled={actionDocumentId === group.targetDocumentId}
+                      >
+                        <Check className="h-3.5 w-3.5" />
+                        Approve
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="h-7 gap-1 border-zinc-400 text-zinc-500 hover:bg-zinc-50 hover:text-zinc-700 dark:border-zinc-600 dark:text-zinc-400 dark:hover:bg-zinc-900"
+                        onClick={() => setPendingAction({ type: "reject", group })}
+                        disabled={actionDocumentId === group.targetDocumentId}
+                      >
+                        <X className="h-3.5 w-3.5" />
+                        Reject
+                      </Button>
+                    </div>
+                  )}
+
+                  <div className="ml-auto flex shrink-0 items-center gap-2">
                     {group.pendingCount > 0 && (
-                      <span className="inline-flex items-center rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 px-2 py-0.5 text-xs font-semibold">
-                        {group.pendingCount} chờ xử lý
+                      <span className="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
+                        {group.pendingCount} pending
                       </span>
                     )}
-                    <span className="inline-flex items-center rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 px-2 py-0.5 text-xs font-medium">
-                      {group.reports.length} báo cáo
+                    <span className="inline-flex items-center rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
+                      {group.reports.length} {group.reports.length === 1 ? "report" : "reports"}
                     </span>
                   </div>
                 </div>
 
-                {/* Expanded individual reports */}
                 {expanded && (
                   <Table className="[&_td]:align-top">
                     <TableHeader>
                       <TableRow className="bg-muted/20">
                         <TableHead className="w-[50px] pl-12">ID</TableHead>
-                        <TableHead>Lý do</TableHead>
-                        <TableHead className="w-[180px]">Người báo cáo</TableHead>
-                        <TableHead className="w-[140px]">Ngày tạo</TableHead>
-                        <TableHead className="w-[120px]">Trạng thái</TableHead>
-                        <TableHead className="w-[1%] text-right pr-4">Xử lý</TableHead>
+                        <TableHead>Reason</TableHead>
+                        <TableHead className="w-[180px]">Reporter</TableHead>
+                        <TableHead className="w-[140px]">Date</TableHead>
+                        <TableHead className="w-[120px]">Status</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {group.reports.map((item) => (
-                        <TableRow key={item.id} className="group bg-muted/10">
-                          <TableCell className="pl-12 text-muted-foreground text-sm">{item.id}</TableCell>
-                          <TableCell className="text-sm max-w-[260px]">{item.reason || <span className="text-muted-foreground italic">Không có lý do</span>}</TableCell>
+                        <TableRow key={item.id} className="bg-muted/10">
+                          <TableCell className="pl-12 text-sm text-muted-foreground">{item.id}</TableCell>
+                          <TableCell className="max-w-[260px] text-sm">
+                            {item.reason || <span className="italic text-muted-foreground">No reason provided</span>}
+                          </TableCell>
                           <TableCell>
                             {item.reporter ? (
                               <div>
@@ -256,22 +375,16 @@ export function ReportsManager() {
                                 <p className="text-xs text-muted-foreground">{item.reporter.email}</p>
                               </div>
                             ) : (
-                              <span className="text-muted-foreground text-sm">Ẩn danh</span>
+                              <span className="text-sm italic text-muted-foreground">Deleted user</span>
                             )}
                           </TableCell>
                           <TableCell className="text-sm">{formatDate(item.createdAt)}</TableCell>
                           <TableCell>
-                            <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_STYLES[item.status]}`}>
+                            <span
+                              className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_STYLES[item.status]}`}
+                            >
                               {STATUS_LABELS[item.status]}
                             </span>
-                          </TableCell>
-                          <TableCell className="text-right pr-4">
-                            <div className="ml-auto flex w-fit gap-1 opacity-100 pointer-events-auto transition-opacity duration-150 md:opacity-0 md:pointer-events-none md:group-hover:opacity-100 md:group-hover:pointer-events-auto">
-                              <IconAction label="Đã xem xét" icon={<CheckCheck />} onClick={() => onUpdateStatus(item, "reviewed")} variant={item.status === "reviewed" ? "default" : "outline"} size="icon-xs" disabled={processingId === item.id} />
-                              <IconAction label="Chờ xử lý" icon={<Clock />} onClick={() => onUpdateStatus(item, "pending")} variant={item.status === "pending" ? "default" : "outline"} size="icon-xs" disabled={processingId === item.id} />
-                              <IconAction label="Bỏ qua" icon={<XCircle />} onClick={() => onUpdateStatus(item, "dismissed")} variant={item.status === "dismissed" ? "secondary" : "outline"} size="icon-xs" disabled={processingId === item.id} />
-                              <IconAction label="Xoá" icon={<Trash2 />} onClick={() => onDelete(item)} variant="destructive" size="icon-xs" />
-                            </div>
                           </TableCell>
                         </TableRow>
                       ))}
@@ -290,6 +403,19 @@ export function ReportsManager() {
           onPageChange={setPage}
         />
       </CardContent>
+
+      <ConfirmReportPostActionModal
+        pendingAction={pendingAction}
+        loading={!!pendingAction && actionDocumentId === pendingAction.group.targetDocumentId}
+        onCancel={() => {
+          if (!actionDocumentId) {
+            setPendingAction(null);
+          }
+        }}
+        onConfirm={() => {
+          void onConfirmAction();
+        }}
+      />
     </Card>
   );
 }
