@@ -28,10 +28,12 @@ async function syncPublishedPostToSearch(strapi: any, documentId: string) {
     });
 
     if (!published?.id) return;
+    const numericId = Number(published.id);
+    if (!Number.isFinite(numericId)) return;
 
     await upsertPostSearchDocument({
       _meilisearch_id: String(published.id),
-      id: published.id,
+      id: numericId,
       documentId: published.documentId,
       title: published.title,
       slug: published.slug,
@@ -43,7 +45,7 @@ async function syncPublishedPostToSearch(strapi: any, documentId: string) {
   }
 }
 
-async function removePostFromSearch(strapi: any, id: number | null | undefined, documentId: string) {
+async function removePostFromSearch(strapi: any, id: string | number | null | undefined, documentId: string) {
   if (!id) return;
   try {
     await deletePostSearchDocumentById(id);
@@ -231,14 +233,14 @@ export default factories.createCoreService(UID, ({ strapi }) => ({
   },
 
   async deleteForAdmin(documentId: string) {
-    let publishedId: number | null = null;
+    let publishedId: string | null = null;
     try {
       const published = await strapi.documents(UID).findOne({
         documentId,
         status: 'published',
         fields: ['id'],
       });
-      publishedId = published?.id ?? null;
+      publishedId = published?.id ? String(published.id) : null;
     } catch {
       publishedId = null;
     }
@@ -255,14 +257,14 @@ export default factories.createCoreService(UID, ({ strapi }) => ({
   },
 
   async unpublishForAdmin(documentId: string) {
-    let publishedId: number | null = null;
+    let publishedId: string | null = null;
     try {
       const published = await strapi.documents(UID).findOne({
         documentId,
         status: 'published',
         fields: ['id'],
       });
-      publishedId = published?.id ?? null;
+      publishedId = published?.id ? String(published.id) : null;
     } catch {
       publishedId = null;
     }

@@ -18,11 +18,22 @@ function getMeiliConfig() {
 
 async function meiliRequest(path: string, init?: RequestInit) {
   const { host, apiKey } = getMeiliConfig();
-  const headers: HeadersInit = {
-    'content-type': 'application/json',
-    ...(apiKey ? { 'X-Meili-API-Key': apiKey } : {}),
-    ...(init?.headers ?? {}),
-  };
+  const headers: Record<string, string> = { 'content-type': 'application/json' };
+  if (apiKey) headers['X-Meili-API-Key'] = apiKey;
+  const incomingHeaders = init?.headers as any;
+  if (incomingHeaders) {
+    if (Array.isArray(incomingHeaders)) {
+      for (const [key, value] of incomingHeaders) {
+        headers[String(key)] = String(value);
+      }
+    } else if (typeof incomingHeaders.forEach === 'function') {
+      incomingHeaders.forEach((value: string, key: string) => {
+        headers[key] = value;
+      });
+    } else {
+      Object.assign(headers, incomingHeaders as Record<string, string>);
+    }
+  }
 
   const response = await fetch(`${host}${path}`, {
     ...init,
@@ -42,8 +53,8 @@ export async function upsertPostSearchDocument(document: SearchPostDocument) {
   });
 }
 
-export async function deletePostSearchDocumentById(id: number) {
-  await meiliRequest(`/indexes/${POSTS_INDEX}/documents/${id}`, {
+export async function deletePostSearchDocumentById(id: string | number) {
+  await meiliRequest(`/indexes/${POSTS_INDEX}/documents/${encodeURIComponent(String(id))}`, {
     method: 'DELETE',
   });
 }
