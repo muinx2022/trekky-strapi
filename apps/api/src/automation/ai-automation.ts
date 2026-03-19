@@ -711,7 +711,7 @@ async function fetchPublishedPosts(strapi: Core.Strapi, limit: number) {
   return (await strapi.db.query('api::post.post').findMany({
     where: { publishedAt: { $notNull: true } },
     populate: ['author'],
-    orderBy: { createdAt: 'asc' },
+    orderBy: { createdAt: 'desc' },
     limit,
   })) as PostEntry[];
 }
