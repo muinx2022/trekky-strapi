@@ -30,6 +30,7 @@ async function syncPublishedPostToSearch(strapi: any, documentId: string) {
     if (!published?.id) return;
 
     await upsertPostSearchDocument({
+      _meilisearch_id: String(published.id),
       id: published.id,
       documentId: published.documentId,
       title: published.title,

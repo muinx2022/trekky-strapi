@@ -1,6 +1,7 @@
 const POSTS_INDEX = 'posts';
 
 type SearchPostDocument = {
+  _meilisearch_id: string;
   id: number;
   documentId: string;
   title: string;
@@ -35,7 +36,7 @@ async function meiliRequest(path: string, init?: RequestInit) {
 }
 
 export async function upsertPostSearchDocument(document: SearchPostDocument) {
-  await meiliRequest(`/indexes/${POSTS_INDEX}/documents?primaryKey=id`, {
+  await meiliRequest(`/indexes/${POSTS_INDEX}/documents`, {
     method: 'POST',
     body: JSON.stringify([document]),
   });
