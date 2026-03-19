@@ -1,4 +1,5 @@
 import { factories } from '@strapi/strapi';
+import { deletePostSearchDocumentById, upsertPostSearchDocument } from '../../../utils/meilisearch-sync';
 
 const UID = 'api::post.post';
 const COMMENT_UID = 'api::comment.comment';
@@ -16,6 +17,38 @@ function toStatus(status: unknown): 'draft' | 'published' | undefined {
 function andFilters(a: any, b: any) {
   if (a && b) return { $and: [a, b] };
   return a ?? b;
+}
+
+async function syncPublishedPostToSearch(strapi: any, documentId: string) {
+  try {
+    const published = await strapi.documents(UID).findOne({
+      documentId,
+      status: 'published',
+      fields: ['id', 'documentId', 'title', 'slug', 'excerpt', 'publishedAt'],
+    });
+
+    if (!published?.id) return;
+
+    await upsertPostSearchDocument({
+      id: published.id,
+      documentId: published.documentId,
+      title: published.title,
+      slug: published.slug,
+      excerpt: published.excerpt ?? null,
+      publishedAt: published.publishedAt ?? null,
+    });
+  } catch (error) {
+    strapi.log.warn(`[meilisearch] Failed to sync published post ${documentId}: ${String(error)}`);
+  }
+}
+
+async function removePostFromSearch(strapi: any, id: number | null | undefined, documentId: string) {
+  if (!id) return;
+  try {
+    await deletePostSearchDocumentById(id);
+  } catch (error) {
+    strapi.log.warn(`[meilisearch] Failed to remove post ${documentId} from search: ${String(error)}`);
+  }
 }
 
 async function findAllDocumentIdsByStatus(
@@ -180,12 +213,16 @@ export default factories.createCoreService(UID, ({ strapi }) => ({
       if (typeof documentsApi.unpublish === 'function' && typeof documentsApi.publish === 'function') {
         await documentsApi.unpublish({ documentId });
         const result = await documentsApi.publish({ documentId });
-        return result?.entries?.[0] ?? updated;
+        const next = result?.entries?.[0] ?? updated;
+        await syncPublishedPostToSearch(strapi, documentId);
+        return next;
       }
 
       if (typeof documentsApi.publish === 'function') {
         const result = await documentsApi.publish({ documentId });
-        return result?.entries?.[0] ?? updated;
+        const next = result?.entries?.[0] ?? updated;
+        await syncPublishedPostToSearch(strapi, documentId);
+        return next;
       }
     }
 
@@ -193,15 +230,44 @@ export default factories.createCoreService(UID, ({ strapi }) => ({
   },
 
   async deleteForAdmin(documentId: string) {
-    return strapi.documents(UID).delete({ documentId });
+    let publishedId: number | null = null;
+    try {
+      const published = await strapi.documents(UID).findOne({
+        documentId,
+        status: 'published',
+        fields: ['id'],
+      });
+      publishedId = published?.id ?? null;
+    } catch {
+      publishedId = null;
+    }
+
+    const deleted = await strapi.documents(UID).delete({ documentId });
+    await removePostFromSearch(strapi, publishedId, documentId);
+    return deleted;
   },
 
   async publishForAdmin(documentId: string) {
     const result = await strapi.documents(UID).publish({ documentId });
+    await syncPublishedPostToSearch(strapi, documentId);
     return result?.entries?.[0] ?? null;
   },
 
   async unpublishForAdmin(documentId: string) {
-    return strapi.documents(UID).unpublish({ documentId });
+    let publishedId: number | null = null;
+    try {
+      const published = await strapi.documents(UID).findOne({
+        documentId,
+        status: 'published',
+        fields: ['id'],
+      });
+      publishedId = published?.id ?? null;
+    } catch {
+      publishedId = null;
+    }
+
+    const unpublished = await strapi.documents(UID).unpublish({ documentId });
+    await removePostFromSearch(strapi, publishedId, documentId);
+    return unpublished;
   },
 }));
