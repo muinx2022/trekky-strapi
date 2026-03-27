@@ -97,7 +97,7 @@ export default function RootLayout({
       >
         <GoogleAnalytics measurementId={gaMeasurementId} />
         <script
-          src="http://tracking.trekky.net/static/tracker.js"
+          src="https://tracking.trekky.net/static/tracker.js?v=20260327"
           data-tracking-id="86abe9cf-4566-4b2e-93c8-c927080e8b2e"
           async
         />
