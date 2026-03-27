@@ -106,7 +106,7 @@ export function PostCard({ post }: { post: Post }) {
             {categories.map((cat, i) => (
               <span key={cat.documentId} className="flex items-center gap-1">
                 {i > 0 && <span className="text-gray-200 dark:text-gray-600">·</span>}
-                <Link href={`/c/${cat.slug}`} className="hover:text-gray-600 hover:underline transition-colors font-medium dark:hover:text-gray-300">
+                <Link href={`/c/${cat.slug}`} data-track-cta={`feed_category_${cat.slug}`} className="hover:text-gray-600 hover:underline transition-colors font-medium dark:hover:text-gray-300">
                   {cat.name}
                 </Link>
               </span>
@@ -117,6 +117,7 @@ export function PostCard({ post }: { post: Post }) {
         {/* 2. Title */}
         <Link
           href={`/p/${post.slug}--${post.documentId}`}
+          data-track-cta="feed_open_post"
           className="block text-base font-bold text-gray-900 hover:text-gray-600 transition-colors line-clamp-2 leading-snug dark:text-gray-100 dark:hover:text-gray-300"
         >
           {post.title}
@@ -124,7 +125,7 @@ export function PostCard({ post }: { post: Post }) {
 
         {/* 3. Author + time */}
         <div className="flex items-center gap-1.5 mt-2">
-          <Link href={post.author?.username ? `/u/${post.author.username}` : "#"} className="shrink-0">
+          <Link href={post.author?.username ? `/u/${post.author.username}` : "#"} data-track-cta="feed_author_avatar" className="shrink-0">
             {authorAvatarUrl ? (
               <Image
                 src={authorAvatarUrl}
@@ -141,7 +142,7 @@ export function PostCard({ post }: { post: Post }) {
             )}
           </Link>
           <div className="flex items-center gap-1 text-xs text-gray-400">
-            <Link href={post.author?.username ? `/u/${post.author.username}` : "#"} className="font-medium text-gray-600 hover:text-gray-800 transition-colors dark:text-gray-400 dark:hover:text-gray-200">
+            <Link href={post.author?.username ? `/u/${post.author.username}` : "#"} data-track-cta="feed_author_profile" className="font-medium text-gray-600 hover:text-gray-800 transition-colors dark:text-gray-400 dark:hover:text-gray-200">
               {post.author?.username ?? "Ẩn danh"}
             </Link>
             {formattedDate && (
@@ -189,6 +190,7 @@ export function PostCard({ post }: { post: Post }) {
             <Link
               key={tag.documentId}
               href={`/t/${tag.slug}`}
+              data-track-cta={`feed_tag_${tag.slug}`}
               className="inline-flex items-center px-2 py-0.5 rounded-full bg-gray-100 text-xs text-gray-500 hover:bg-gray-200 hover:text-gray-700 transition-colors dark:bg-gray-700 dark:text-gray-400 dark:hover:bg-gray-600 dark:hover:text-gray-200"
             >
               #{tag.name}
@@ -216,7 +218,7 @@ export function PostCard({ post }: { post: Post }) {
         </div>
 
         <div className="flex items-center gap-0.5">
-          <button className="flex items-center gap-1 px-2.5 py-1.5 rounded-full hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors dark:hover:bg-gray-700 dark:hover:text-gray-300">
+          <button data-track-cta="feed_share" className="flex items-center gap-1 px-2.5 py-1.5 rounded-full hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors dark:hover:bg-gray-700 dark:hover:text-gray-300">
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
               <line x1="8.59" x2="15.42" y1="13.51" y2="17.49"/><line x1="15.41" x2="8.59" y1="6.51" y2="10.49"/>
@@ -226,6 +228,7 @@ export function PostCard({ post }: { post: Post }) {
 
           <Link
             href={`/p/${post.slug}--${post.documentId}`}
+            data-track-cta="feed_view_post"
             className="flex items-center gap-1 px-2.5 py-1.5 rounded-full hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors dark:hover:bg-gray-700 dark:hover:text-gray-300"
           >
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

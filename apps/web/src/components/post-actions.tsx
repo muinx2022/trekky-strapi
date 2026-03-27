@@ -93,6 +93,7 @@ export function PostActions({ targetType, targetDocumentId }: ActionProps) {
       {/* Like */}
       <button
         onClick={handleLike}
+        data-track-cta="post_like"
         className={`flex items-center gap-2 text-sm font-medium transition-colors px-3 py-1.5 rounded-full ${
           liked
             ? "bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400"
@@ -106,6 +107,7 @@ export function PostActions({ targetType, targetDocumentId }: ActionProps) {
       {/* Follow */}
       <button
         onClick={handleFollow}
+        data-track-cta="post_follow"
         className={`flex items-center gap-2 text-sm font-medium transition-colors px-3 py-1.5 rounded-full ${
           followed
             ? "bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400"
@@ -122,6 +124,7 @@ export function PostActions({ targetType, targetDocumentId }: ActionProps) {
       {/* Share / Copy link */}
       <button
         onClick={handleShare}
+        data-track-cta="post_share"
         className={`flex items-center gap-2 text-sm font-medium transition-colors px-3 py-1.5 rounded-full ${
           copied
             ? "bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400"

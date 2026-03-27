@@ -47,6 +47,15 @@ export async function generateMetadata({ params }: PostPageProps): Promise<Metad
     title: post.title,
     description,
     alternates: { canonical },
+    other: {
+      "trekky:page_type": "article",
+      "trekky:content_id": post.documentId,
+      "trekky:content_slug": post.slug,
+      "trekky:content_title": post.title,
+      "trekky:author": post.author?.username ?? "",
+      "trekky:category": post.categories?.[0]?.name ?? "",
+      "trekky:tags": post.tags?.map((t) => t.name).join(",") ?? "",
+    },
     openGraph: {
       type: "article",
       url: canonical,
@@ -110,6 +119,7 @@ export default async function PostPage({ params }: PostPageProps) {
                 {i > 0 && <span className="text-gray-300 dark:text-gray-600">·</span>}
                 <Link
                   href={`/c/${cat.slug}`}
+                  data-track-cta={`post_category_${cat.slug}`}
                   className="hover:text-gray-700 hover:underline transition-colors font-medium dark:hover:text-gray-300"
                 >
                   {cat.name}
@@ -143,6 +153,7 @@ export default async function PostPage({ params }: PostPageProps) {
           <div className="flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400">
             <Link
               href={post.author?.username ? `/u/${post.author.username}` : "#"}
+              data-track-cta="post_author_profile"
               className="font-medium text-gray-700 hover:text-gray-900 transition-colors dark:text-gray-300 dark:hover:text-gray-100"
             >
               {post.author?.username ?? "Ẩn danh"}
@@ -185,6 +196,7 @@ export default async function PostPage({ params }: PostPageProps) {
             <Link
               key={tag.documentId}
               href={`/t/${tag.slug}`}
+              data-track-cta={`post_tag_${tag.slug}`}
               className="inline-flex items-center px-2.5 py-0.5 rounded-full bg-gray-100 text-xs text-gray-500 hover:bg-gray-200 hover:text-gray-700 transition-colors dark:bg-gray-700 dark:text-gray-400 dark:hover:bg-gray-600 dark:hover:text-gray-200"
             >
               #{tag.name}
