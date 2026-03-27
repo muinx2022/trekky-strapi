@@ -96,6 +96,11 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} min-h-screen bg-gray-100 antialiased flex flex-col`}
       >
         <GoogleAnalytics measurementId={gaMeasurementId} />
+        <script
+          src="http://tracking.trekky.net/static/tracker.js"
+          data-tracking-id="86abe9cf-4566-4b2e-93c8-c927080e8b2e"
+          async
+        />
         <AuthProvider>
           <SiteShell>{children}</SiteShell>
         </AuthProvider>
